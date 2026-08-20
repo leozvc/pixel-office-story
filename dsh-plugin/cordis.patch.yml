@@ -1,0 +1,9 @@
+# dsh-pixel-office-bridge bundle patch: mount the APK↔DSH bridge service.
+#
+# Install with:
+#   dsh plugin --profile web add link:/tmp/dsh-pixel-office-bridge
+# The node half (exports ".") runs in the host process and starts the
+# HTTP bridge (port 8866) that proxies APK game chat to the DSH LLM provider.
+- insert:
+    - id: pixel-office-bridge
+      name: dsh-pixel-office-bridge

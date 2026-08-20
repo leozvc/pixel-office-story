@@ -1,0 +1,23 @@
+{
+  "name": "dsh-pixel-office-bridge",
+  "description": "DSH ↔ 像素办公室物语 APK 桥接插件：把 DSH 的 LLM（opencodex provider）暴露为带配对鉴权的 HTTP 服务，供手机端 APK 的游戏 PM 调用真实 DeepSeek。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./server": "./lib/server.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,15 @@
+[Unit]
+Description=Pixel Office DSH Bridge (DSH ↔ APK 桥接服务)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/tmp/pixel-office-game
+ExecStart=/usr/bin/node /tmp/pixel-office-game/bridge/server.js --port 8866
+Restart=on-failure
+RestartSec=3
+Environment=BRIDGE_PORT=8866
+Environment=BRIDGE_HOST=0.0.0.0
+
+[Install]
+WantedBy=multi-user.target

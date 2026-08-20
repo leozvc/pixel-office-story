@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b2118">
+<title>像素办公室物语</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 顶部 HUD -->
+  <div id="hud">
+    <div class="hud-item" id="hud-money"><span>¥</span><span id="hud-money">0</span></div>
+    <div class="hud-item" id="hud-day">DAY 1</div>
+    <div class="hud-item" id="hud-clock">09:00</div>
+    <div class="hud-item" id="hud-emp">👥 0</div>
+    <div class="hud-item" id="hud-rep">★0</div>
+    <div class="hud-spacer"></div>
+    <div id="hud-net" class="hud-item" style="cursor:pointer" title="连接状态">⚡</div>
+    <div id="hud-proj" class="hud-item" style="cursor:pointer" title="项目看板">📊</div>
+    <div id="hud-arch" class="hud-item" style="cursor:pointer" title="完成档案">🏆</div>
+    <div id="hud-bell" title="通知">
+      <span>🔔</span>
+      <span class="badge">0</span>
+    </div>
+    <div id="hud-sound" title="声音">♪</div>
+  </div>
+
+  <!-- 办公室场景 -->
+  <div id="scene-wrap">
+    <canvas id="scene"></canvas>
+  </div>
+
+  <!-- 底部聊天 -->
+  <div id="chat-wrap">
+    <div id="chat-head">
+      <div class="pm-avatar">P</div>
+      <span>佐藤美咲 · 项目经理</span>
+      <span class="typing" style="display:none">正在输入…</span>
+    </div>
+    <div id="chat-body"></div>
+    <div class="quick-row" id="quick-row"></div>
+    <div id="chat-input-wrap">
+      <input id="chat-input" placeholder="跟项目经理说话…（试试「接项目」「招人」「汇报进度」）" autocomplete="off">
+      <button id="chat-send">发送</button>
+    </div>
+  </div>
+</div>
+
+<!-- 通知 Toast -->
+<div id="toasts"></div>
+
+<!-- 面板 -->
+<div class="panel-overlay" id="panel-notif">
+  <div class="panel">
+    <div class="panel-head"><span>📮 通知</span><button class="close">✕</button></div>
+    <div class="panel-body"></div>
+  </div>
+</div>
+<div class="panel-overlay" id="panel-emp">
+  <div class="panel">
+    <div class="panel-head"><span>👤 员工档案</span><button class="close">✕</button></div>
+    <div class="panel-body"></div>
+  </div>
+</div>
+<div class="panel-overlay" id="panel-proj">
+  <div class="panel">
+    <div class="panel-head"><span>📊 项目看板</span><button class="close">✕</button></div>
+    <div class="panel-body"></div>
+  </div>
+</div>
+<div class="panel-overlay" id="panel-archive">
+  <div class="panel">
+    <div class="panel-head"><span>🏆 完成档案</span><button class="close">✕</button></div>
+    <div class="panel-body"></div>
+  </div>
+</div>
+<div class="panel-overlay" id="panel-shop">
+  <div class="panel">
+    <div class="panel-head"><span>🛠 办公室升级</span><button class="close">✕</button></div>
+    <div class="panel-body"></div>
+  </div>
+</div>
+<div class="panel-overlay" id="panel-connect">
+  <div class="panel">
+    <div class="panel-head"><span>🔌 连接 DeepSeek 桥接</span><button class="close">✕</button></div>
+    <div class="panel-body">
+      <div class="section-title">桥接服务器</div>
+      <div class="conn-field">
+        <label>服务器地址</label>
+        <input id="conn-server" placeholder="http://192.168.x.x:8866" autocomplete="off">
+      </div>
+      <div class="section-title">设备配对</div>
+      <div class="conn-status" id="conn-status">未连接</div>
+      <div class="conn-steps">
+        <div class="conn-step"><b>1.</b> 在上方填入 DSH 桥接服务地址</div>
+        <div class="conn-step"><b>2.</b> 点击「获取配对码」，在 DSH 端确认后输入配对码</div>
+        <div class="conn-step"><b>3.</b> 配对成功后 PM 将接入真实 DeepSeek</div>
+      </div>
+      <div class="conn-field">
+        <label>配对码</label>
+        <input id="conn-code" placeholder="6位数字" autocomplete="off" maxlength="6">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn blue" id="conn-pair-btn">获取配对码</button>
+        <button class="btn green" id="conn-confirm-btn">确认配对</button>
+        <button class="btn gray" id="conn-clear-btn">解除配对</button>
+      </div>
+      <div class="section-title">连接信息</div>
+      <div id="conn-info" style="font-size:12px;color:#6e5f50;line-height:1.6"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 启动画面 -->
+<div id="boot-screen">
+  <div class="boot-logo">像素办公室物语</div>
+  <div class="boot-sub">PIXEL OFFICE STORY</div>
+  <button class="boot-btn" id="boot-btn">进入办公室</button>
+  <div class="boot-tip">你是一家游戏公司的老板<br>通过项目经理指挥员工开发游戏<br>接单 → 研发 → 交付 → 盈利 → 扩张</div>
+</div>
+
+<script src="js/palette.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/bridge.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/pm.js"></script>
+<script src="js/ui.js"></script>
+<script>
+(function () {
+  // 初始化
+  GState.load();
+  var S = GState.get();
+
+  // 首次游玩：预置 PM
+  if (!S.employees.length) {
+    var pmType = GD.EMP_TYPES.find(function (t) { return t.id === "pm"; });
+    var pm = PM.makeEmp(pmType);
+    pm.name = "佐藤 美咲";
+    S.employees.push(pm);
+    GState.save();
+  }
+
+  // 事件接线
+  window.GameEvents = {
+    onEmpClick: function (emp) { UI.onEmpClick(emp); },
+    onProjectDone: function (p, arch, n) { UI.onProjectDone(p, arch, n); },
+  };
+
+  // 启动引擎
+  var canvas = document.getElementById("scene");
+  Game.init(canvas);
+  UI.init();
+
+  // 定时模拟（时钟）
+  setInterval(function () {
+    GState.tickMinute();
+    // 偶尔 PM 主动汇报
+    if (Math.random() < 0.02 && UI) {
+      // 通过聊天注入（低频率）
+    }
+  }, 500); // 每0.5秒过1分钟（游戏时钟加速，一天约6分钟）
+
+  // 周期 PM 主动消息（游戏节奏）
+  var lastPM = 0;
+  setInterval(function () {
+    var now = Date.now();
+    if (now - lastPM > 45000 && Math.random() < 0.5) {
+      lastPM = now;
+      var txt = PM.pmIdle();
+      if (txt) UI.addPM(txt);
+    }
+  }, 20000);
+
+  // 测试钩子
+  window.__test = {
+    money: function () { return GState.get().money; },
+    employees: function () { return GState.get().employees.length; },
+    projects: function () { return GState.get().projects.length; },
+    tasks: function () { return GState.get().tasks.length; },
+    send: function (t) { UI.sendChatWith ? UI.sendChatWith(t) : (function(){ var inp = document.getElementById("chat-input"); inp.value = t; UI.sendChat(); })(); },
+    start: function () {
+      var b = document.getElementById("boot-btn"); b.click();
+    },
+    notifCount: function () { return GState.get().notifications.length; },
+    archive: function () { return GState.get().archive.length; },
+    day: function () { return GState.get().day; },
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-// LLM 桥接客户端 —— 对接 DSH 桥接服务的网络层
-// 负责：配对流程、token 管理、调用 /v1/chat、离线检测与回退
+// LLM 桥接客户端 —— 对接 DSH 桥接服务（DSH 任务编排版）
+// 负责：配对、token 管理、真实员工 agent 管理、任务派发、PM 对话
 window.Bridge = (function () {
   const S = GState;
   const SETTINGS_KEY = "pixelOfficeBridgeSettings";
@@ -34,7 +34,7 @@ window.Bridge = (function () {
       method: method || "GET",
       headers,
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(60000),
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.error || ("HTTP " + resp.status));
@@ -45,14 +45,11 @@ window.Bridge = (function () {
     return !!baseUrl() && !!settings.token;
   }
 
-  // 配对步骤 1：请求配对码
+  // 配对
   async function requestPairCode() {
     if (!baseUrl()) throw new Error("请先填写服务器地址");
-    const d = await req("/pair/request", "POST", {});
-    return d;
+    return await req("/pair/request", "POST", {});
   }
-
-  // 配对步骤 2：确认配对码，换取 token
   async function confirmPair(code, deviceName) {
     const d = await req("/pair/confirm", "POST", { code: code.trim(), deviceName: deviceName || "PixelOffice" });
     settings.token = d.token;
@@ -61,70 +58,76 @@ window.Bridge = (function () {
     saveSettings();
     return d;
   }
-
-  // 调用 LLM 对话（游戏状态会附加给 PM 上下文）
-  async function chat(messages, gameState) {
-    if (!isConfigured()) throw new Error("未配对");
-    if (busy) throw new Error("busy");
-    busy = true;
-    try {
-      const d = await req("/v1/chat", "POST", { messages, gameState }, settings.token);
-      return d;
-    } finally { busy = false; }
-  }
-
-  // 健康检查（带 token）
-  async function health() {
-    if (!baseUrl()) return { ok: false };
-    try {
-      const d = await req("/health", "GET");
-      return d;
-    } catch (e) { return { ok: false, error: e.message }; }
-  }
-
   function clearPair() {
     settings.token = "";
     settings.paired = false;
     settings.model = "";
     saveSettings();
   }
-
   function setServer(s) { settings.server = (s || "").trim(); saveSettings(); }
   function setDeviceName(n) { settings.deviceName = (n || "").trim(); saveSettings(); }
+
+  // 健康检查
+  async function health() {
+    if (!baseUrl()) return { ok: false };
+    try { return await req("/health", "GET"); }
+    catch (e) { return { ok: false, error: e.message }; }
+  }
+
+  // ---- DSH 任务编排 API ----
+  // 列出员工（真实 continuable 子代理）
+  async function listAgents() {
+    return await req("/v1/agents", "GET", null, settings.token);
+  }
+  // 雇佣员工
+  async function hireAgent(name, role) {
+    return await req("/v1/agents/hire", "POST", { name, role }, settings.token);
+  }
+  // 创建任务并指派
+  async function createTask(title, desc, assign) {
+    return await req("/v1/tasks", "POST", { title, desc, assign }, settings.token);
+  }
+  // 列出任务/员工实时状态
+  async function listTasks() {
+    return await req("/v1/tasks", "GET", null, settings.token);
+  }
+  // 指派单个任务给员工
+  async function assignTask(childId, taskText) {
+    return await req("/v1/tasks/assign", "POST", { childId, taskText }, settings.token);
+  }
+  // 读取员工会话日志（汇报用）
+  async function readLogs(childId) {
+    return await req("/v1/tasks/" + childId + "/logs", "GET", null, settings.token);
+  }
+  // PM 汇报
+  async function pmReport() {
+    return await req("/v1/pm/report", "POST", {}, settings.token);
+  }
+  // PM 对话（LLM 解读意图 + 调度）
+  async function pmChat(messages, team, tasks) {
+    return await req("/v1/pm/chat", "POST", { messages, team, tasks }, settings.token);
+  }
 
   // 组装游戏状态给 PM
   function buildGameState() {
     const Ss = S.get();
     return {
-      day: Ss.day,
-      clock: Ss.clock,
-      money: Ss.money,
-      companyLevel: Ss.companyLevel,
       companyName: Ss.companyName,
-      reputation: Ss.reputation,
+      connected: Ss.connected,
       employees: Ss.employees.map(e => ({
-        id: e.id, name: e.name, role: e.typeId, mood: e.mood, level: e.level, salary: e.salary,
+        id: e.id, name: e.name, role: e.role, status: e.status,
       })),
-      projects: Ss.projects.map(p => ({
-        id: p.id, name: p.name, client: p.client, reward: p.reward, difficulty: p.difficulty,
-        required: p.required,
-        progress: p.required.map(t => ({ role: t, done: p.progress[t] || 0, total: p.hours[t] })),
+      tasks: Ss.tasks.map(t => ({
+        id: t.id, title: t.title, desc: t.desc, assign: t.assign, status: t.status,
       })),
-      tasks: Ss.tasks.map(t => ({ emp: (Ss.employees.find(e => e.id === t.empId) || {}).name, role: t.typeId, done: t.done, total: t.total })),
-      archiveCount: Ss.archive.length,
-      money: Ss.money,
-      lastOffer: Ss._lastOffer ? {
-        name: Ss._lastOffer.name, client: Ss._lastOffer.client,
-        reward: Ss._lastOffer.reward, difficulty: Ss._lastOffer.difficulty,
-        required: Ss._lastOffer.required,
-      } : null,
     };
   }
 
   return {
     loadSettings, saveSettings, getSettings,
-    isConfigured, requestPairCode, confirmPair, chat, health, clearPair,
-    setServer, setDeviceName, buildGameState,
+    isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
+    health, buildGameState,
+    listAgents, hireAgent, createTask, listTasks, assignTask, readLogs, pmReport, pmChat,
     SETTINGS_KEY,
   };
 })();

@@ -42,11 +42,9 @@ canvas { image-rendering: pixelated; }
   white-space: nowrap;
 }
 .hud-item img { width: 16px; height: 16px; image-rendering: pixelated; }
-#hud-money { color: #f2d04a; font-weight: bold; }
-#hud-day { color: #9fe8cf; }
-#hud-clock { color: #d8c9a3; min-width: 52px; text-align: center; }
-#hud-emp { color: #cfe0ff; }
-#hud-rep { color: #f2a0c0; }
+#hud-title { color: #f2d04a; font-weight: bold; }
+#hud-team { color: #cfe0ff; cursor: pointer; }
+#hud-tasks { color: #9fe8cf; cursor: pointer; }
 .hud-spacer { flex: 1; }
 #hud-bell {
   position: relative; cursor: pointer;

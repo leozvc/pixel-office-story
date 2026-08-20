@@ -11,15 +11,11 @@
 <div id="app">
   <!-- 顶部 HUD -->
   <div id="hud">
-    <div class="hud-item" id="hud-money"><span>¥</span><span id="hud-money">0</span></div>
-    <div class="hud-item" id="hud-day">DAY 1</div>
-    <div class="hud-item" id="hud-clock">09:00</div>
-    <div class="hud-item" id="hud-emp">👥 0</div>
-    <div class="hud-item" id="hud-rep">★0</div>
+    <div class="hud-item" id="hud-title">像素软件株式会社</div>
     <div class="hud-spacer"></div>
-    <div id="hud-net" class="hud-item" style="cursor:pointer" title="连接状态">⚡</div>
-    <div id="hud-proj" class="hud-item" style="cursor:pointer" title="项目看板">📊</div>
-    <div id="hud-arch" class="hud-item" style="cursor:pointer" title="完成档案">🏆</div>
+    <div id="hud-team" class="hud-item" style="cursor:pointer" title="团队">👥 0</div>
+    <div id="hud-tasks" class="hud-item" style="cursor:pointer" title="任务工作台">📋 0</div>
+    <div id="hud-net" class="hud-item" style="cursor:pointer" title="连接状态">⚪</div>
     <div id="hud-bell" title="通知">
       <span>🔔</span>
       <span class="badge">0</span>
@@ -60,25 +56,13 @@
 </div>
 <div class="panel-overlay" id="panel-emp">
   <div class="panel">
-    <div class="panel-head"><span>👤 员工档案</span><button class="close">✕</button></div>
+    <div class="panel-head"><span>👥 团队（真实 DSH agent）</span><button class="close">✕</button></div>
     <div class="panel-body"></div>
   </div>
 </div>
-<div class="panel-overlay" id="panel-proj">
+<div class="panel-overlay" id="panel-tasks">
   <div class="panel">
-    <div class="panel-head"><span>📊 项目看板</span><button class="close">✕</button></div>
-    <div class="panel-body"></div>
-  </div>
-</div>
-<div class="panel-overlay" id="panel-archive">
-  <div class="panel">
-    <div class="panel-head"><span>🏆 完成档案</span><button class="close">✕</button></div>
-    <div class="panel-body"></div>
-  </div>
-</div>
-<div class="panel-overlay" id="panel-shop">
-  <div class="panel">
-    <div class="panel-head"><span>🛠 办公室升级</span><button class="close">✕</button></div>
+    <div class="panel-head"><span>📋 任务工作台</span><button class="close">✕</button></div>
     <div class="panel-body"></div>
   </div>
 </div>
@@ -118,7 +102,7 @@
   <div class="boot-logo">像素办公室物语</div>
   <div class="boot-sub">PIXEL OFFICE STORY</div>
   <button class="boot-btn" id="boot-btn">进入办公室</button>
-  <div class="boot-tip">你是一家游戏公司的老板<br>通过项目经理指挥员工开发游戏<br>接单 → 研发 → 交付 → 盈利 → 扩张</div>
+  <div class="boot-tip">你是一家游戏公司的老板<br>通过项目经理「佐藤美咲」指挥真实 AI agent 员工工作<br>安排任务 → agent 执行 → PM 汇报，闭环完成工作<br>本版本已接入 DeepSeek harness</div>
 </div>
 
 <script src="js/palette.js"></script>
@@ -136,19 +120,9 @@
   GState.load();
   var S = GState.get();
 
-  // 首次游玩：预置 PM
-  if (!S.employees.length) {
-    var pmType = GD.EMP_TYPES.find(function (t) { return t.id === "pm"; });
-    var pm = PM.makeEmp(pmType);
-    pm.name = "佐藤 美咲";
-    S.employees.push(pm);
-    GState.save();
-  }
-
   // 事件接线
   window.GameEvents = {
     onEmpClick: function (emp) { UI.onEmpClick(emp); },
-    onProjectDone: function (p, arch, n) { UI.onProjectDone(p, arch, n); },
   };
 
   // 启动引擎
@@ -156,39 +130,23 @@
   Game.init(canvas);
   UI.init();
 
-  // 定时模拟（时钟）
+  // 周期同步真实员工/任务状态（已连接时）
   setInterval(function () {
-    GState.tickMinute();
-    // 偶尔 PM 主动汇报
-    if (Math.random() < 0.02 && UI) {
-      // 通过聊天注入（低频率）
+    if (window.Bridge && Bridge.isConfigured() && window.PM && !UI.syncing) {
+      UI.syncing = true;
+      PM.syncFromBridge().catch(function () {}).then(function () { UI.syncing = false; });
     }
-  }, 500); // 每0.5秒过1分钟（游戏时钟加速，一天约6分钟）
-
-  // 周期 PM 主动消息（游戏节奏）
-  var lastPM = 0;
-  setInterval(function () {
-    var now = Date.now();
-    if (now - lastPM > 45000 && Math.random() < 0.5) {
-      lastPM = now;
-      var txt = PM.pmIdle();
-      if (txt) UI.addPM(txt);
-    }
-  }, 20000);
+  }, 15000);
 
   // 测试钩子
   window.__test = {
-    money: function () { return GState.get().money; },
     employees: function () { return GState.get().employees.length; },
-    projects: function () { return GState.get().projects.length; },
     tasks: function () { return GState.get().tasks.length; },
-    send: function (t) { UI.sendChatWith ? UI.sendChatWith(t) : (function(){ var inp = document.getElementById("chat-input"); inp.value = t; UI.sendChat(); })(); },
-    start: function () {
-      var b = document.getElementById("boot-btn"); b.click();
-    },
+    connected: function () { return GState.get().connected; },
+    send: function (t) { var inp = document.getElementById("chat-input"); inp.value = t; UI.sendChat(); },
+    start: function () { var b = document.getElementById("boot-btn"); b.click(); },
     notifCount: function () { return GState.get().notifications.length; },
-    archive: function () { return GState.get().archive.length; },
-    day: function () { return GState.get().day; },
+    sync: function () { return PM.syncFromBridge().catch(function (e) { return { error: e.message }; }); },
   };
 })();
 </script>

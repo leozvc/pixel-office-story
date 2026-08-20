@@ -50,5 +50,5 @@ node lib/server.js revoke <设备名>
 - `BRIDGE_PORT` 默认 8866
 - `BRIDGE_HOST` 默认 0.0.0.0
 - `DSH_LLM_BASE` 默认 http://127.0.0.1:10100/v1
-- `DSH_LLM_MODEL` 默认 wpsai/deepseek/deepseek-v4-flash-0731
-- API key 自动读取 `~/.dsh/.credentials.yaml` 的 `OPENCODEX_API_KEY`
+- `DSH_LLM_MODEL` 默认 wps-ai/deepseek/deepseek-v4-flash-0731
+- API key 自动读取 `~/.dsh/.credentials.yaml` 的 `OCX_API_KEY`

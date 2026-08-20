@@ -12,8 +12,8 @@
  *
  * 环境变量：
  *   DSH_LLM_BASE   LLM 端点（默认 http://127.0.0.1:10100/v1）
- *   DSH_LLM_APIKEY LLM API key（默认读 ~/.dsh/.credentials.yaml 的 OPENCODEX_API_KEY）
- *   DSH_LLM_MODEL  默认模型（默认 wpsai/deepseek/deepseek-v4-flash-0731）
+ *   DSH_LLM_APIKEY LLM API key（默认读 ~/.dsh/.credentials.yaml 的 OCX_API_KEY）
+ *   DSH_LLM_MODEL  默认模型（默认 wps-ai/deepseek/deepseek-v4-flash-0731）
  *   BRIDGE_PORT    监听端口（默认 8866）
  *   BRIDGE_HOST    监听地址（默认 0.0.0.0）
  */
@@ -26,7 +26,7 @@ const crypto = require("crypto");
 const PORT = parseInt(process.env.BRIDGE_PORT || "8866", 10);
 const HOST = process.env.BRIDGE_HOST || "0.0.0.0";
 const LLM_BASE = process.env.DSH_LLM_BASE || "http://127.0.0.1:10100/v1";
-const LLM_MODEL = process.env.DSH_LLM_MODEL || "wpsai/deepseek/deepseek-v4-flash-0731";
+const LLM_MODEL = process.env.DSH_LLM_MODEL || "wps-ai/deepseek/deepseek-v4-flash-0731";
 
 // ---- 读取 API key ----
 function readApiKey() {
@@ -35,7 +35,7 @@ function readApiKey() {
     const credPath = path.join(os.homedir(), ".dsh", ".credentials.yaml");
     if (fs.existsSync(credPath)) {
       const txt = fs.readFileSync(credPath, "utf8");
-      const m = txt.match(/OPENCODEX_API_KEY:\s*(\S+)/);
+      const m = txt.match(/(?:OCX_API_KEY|OPENCODEX_API_KEY):\s*(\S+)/);
       if (m) return m[1];
     }
   } catch (e) {}

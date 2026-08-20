@@ -9,7 +9,7 @@ import crypto from "node:crypto";
 export const PORT = parseInt(process.env.BRIDGE_PORT || "8866", 10);
 export const HOST = process.env.BRIDGE_HOST || "0.0.0.0";
 const LLM_BASE = process.env.DSH_LLM_BASE || "http://127.0.0.1:10100/v1";
-const LLM_MODEL = process.env.DSH_LLM_MODEL || "wpsai/deepseek/deepseek-v4-flash-0731";
+const LLM_MODEL = process.env.DSH_LLM_MODEL || "wps-ai/deepseek/deepseek-v4-flash-0731";
 
 function readApiKey() {
   if (process.env.DSH_LLM_APIKEY) return process.env.DSH_LLM_APIKEY;
@@ -17,7 +17,7 @@ function readApiKey() {
     const credPath = path.join(os.homedir(), ".dsh", ".credentials.yaml");
     if (fs.existsSync(credPath)) {
       const txt = fs.readFileSync(credPath, "utf8");
-      const m = txt.match(/OPENCODEX_API_KEY:\s*(\S+)/);
+      const m = txt.match(/(?:OCX_API_KEY|OPENCODEX_API_KEY):\s*(\S+)/);
       if (m) return m[1];
     }
   } catch (e) {}

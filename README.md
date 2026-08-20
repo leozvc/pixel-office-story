@@ -83,8 +83,8 @@ APK 已签名（debug keystore），可直接安装。
 ```
 
 - **DSH 端**：`bridge/server.js` 常驻服务（systemd: `pixel-office-bridge`），监听 `0.0.0.0:8866`
-  - 内部代理到 DSH 的 LLM provider（`http://127.0.0.1:10100/v1`，读取 `~/.dsh/.credentials.yaml` 的 OPENCODEX_API_KEY）
-  - 默认模型 `wpsai/deepseek/deepseek-v4-flash-0731`
+  - 内部代理到 DSH 的 LLM provider（`http://127.0.0.1:10100/v1`，读取 `~/.dsh/.credentials.yaml` 的 OCX_API_KEY）
+  - 默认模型 `wps-ai/deepseek/deepseek-v4-flash-0731`
 - **APK 端**：游戏内「🔌 连接」面板进行配对
 
 ## 配对流程（鉴权）
@@ -121,7 +121,29 @@ LLM 不可用或未配对时自动回退到离线规则引擎，游戏不中断�
 - `llm_test.js` 联机配对 + LLM 对话
 - `llm_full.js` 完整 LLM 游戏循环（招聘→接单→完成）
 - `llm_fileview.js` file:// 协议（模拟 WebView/APK）下 LLM 全流程
+- `apk_extract_verify.js` 从最终 APK 提取文件的完整联调
+- `device_acceptance.js` 真机验收测试（通过 `adb forward` 连接手机 WebView CDP）
 
 ```bash
 node test/llm_full.js
+```
+
+### 真机验收测试
+
+```bash
+# 1. 构建并安装 APK
+cd android && gradle assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk   # HyperOS 需在弹窗点「继续安装」
+
+# 2. 启动游戏
+adb shell am start -n com.pixelboss.office/.MainActivity
+
+# 3. 转发 WebView CDP 调试端口（游戏 WebView 默认开启调试）
+adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof com.pixelboss.office)
+
+# 4. 转发桥接端口（USB 联机配对，手机经 127.0.0.1:8866 访问宿主 DSH 桥接）
+adb reverse tcp:8866 tcp:8866
+
+# 5. 运行真机验收测试
+node test/device_acceptance.js
 ```

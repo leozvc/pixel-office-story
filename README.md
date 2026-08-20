@@ -111,13 +111,29 @@ APK 已签名（debug keystore），可直接安装。
 
 ## DSH 任务编排能力
 
-PM 通过系统提示词理解老板意图并输出动作 JSON，由桥接服务执行：
-- 招聘（`hire`：dev/art/qa/ops）→ 创建真实 continuable DSH 子代理员工
-- 安排任务（`create_task`：title/desc/assign）→ `followup` 派发给员工 agent 真实执行
-- 汇报（`report`）→ 读各员工 agent 会话日志汇总真实产出
+PM 通过系统提示词理解老板意图并输出动作 JSON，由**自包含任务编排服务**执行：
+- 招聘（`hire`：dev/art/qa/ops）→ 创建真实 LLM 会话线程员工
+- 安排任务（`create_task`：title/desc/assign/workspace）→ 创建任务卡 + 独立工作区，员工真实执行并产出落盘
+- 汇报（`report`）→ 汇总任务看板与员工产出
 - 闲聊（`none`）
 
 > 本版本已移除离线规则引擎与接单/升级等模拟玩法；未配对时游戏只提示连接 DSH，不进行模拟。
+
+### 自包含任务编排服务（8867）
+
+`dsh-plugin/lib/taskboard-server.cjs` 是独立的 DSH 任务编排 HTTP 服务，**无需重启 DSH**：
+- 任务看板（todo/doing/done 多列，任务卡含标题/描述/负责人/工作区/状态/产出）
+- 工作区管理（默认 `~/.dsh/pixel-office-story/workspace/tasks/<taskId>/`，可在任务卡指定任意目录）
+- 员工 = LLM 会话线程，真实执行任务并把产出写入工作区（`TASK.md`）
+- ASR 语音（录音 → 宿主 whisper → 文字 → PM）
+- PM 快问快答（低思考模式模型 `wps-ai/deepseek/deepseek-v4-flash-0731`）
+- 完成通知（`/v1/notifications` 供 APK 轮询）
+
+```bash
+node dsh-plugin/lib/taskboard-server.cjs --port 8867
+```
+
+> 保留的 `dsh-plugin` 原 bridge（8866，DSH 插件）仍可用于真实 DSH 子代理模式；本版游戏默认连 8867 任务编排服务。
 
 ## 测试
 

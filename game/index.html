@@ -14,7 +14,8 @@
     <div class="hud-item" id="hud-title">像素软件株式会社</div>
     <div class="hud-spacer"></div>
     <div id="hud-team" class="hud-item" style="cursor:pointer" title="团队">👥 0</div>
-    <div id="hud-tasks" class="hud-item" style="cursor:pointer" title="任务工作台">📋 0</div>
+    <div id="hud-tasks" class="hud-item" style="cursor:pointer" title="任务看板">📋 0</div>
+    <div id="hud-newtask" class="hud-item" style="cursor:pointer" title="新建任务">➕</div>
     <div id="hud-net" class="hud-item" style="cursor:pointer" title="连接状态">⚪</div>
     <div id="hud-bell" title="通知">
       <span>🔔</span>
@@ -38,7 +39,8 @@
     <div id="chat-body"></div>
     <div class="quick-row" id="quick-row"></div>
     <div id="chat-input-wrap">
-      <input id="chat-input" placeholder="跟项目经理说话…（试试「接项目」「招人」「汇报进度」）" autocomplete="off">
+      <button id="mic-btn" title="语音输入">🎤</button>
+      <input id="chat-input" placeholder="跟项目经理说话…（试试「招人」「帮我安排一个任务：…」「汇报进度」）" autocomplete="off">
       <button id="chat-send">发送</button>
     </div>
   </div>
@@ -62,13 +64,25 @@
 </div>
 <div class="panel-overlay" id="panel-tasks">
   <div class="panel">
-    <div class="panel-head"><span>📋 任务工作台</span><button class="close">✕</button></div>
+    <div class="panel-head"><span>📋 任务看板</span><button class="close">✕</button></div>
+    <div class="panel-body"></div>
+  </div>
+</div>
+<div class="panel-overlay" id="panel-tasknew">
+  <div class="panel">
+    <div class="panel-head"><span>➕ 新建任务</span><button class="close">✕</button></div>
+    <div class="panel-body"></div>
+  </div>
+</div>
+<div class="panel-overlay" id="panel-taskdetail">
+  <div class="panel">
+    <div class="panel-head"><span>📄 任务详情</span><button class="close">✕</button></div>
     <div class="panel-body"></div>
   </div>
 </div>
 <div class="panel-overlay" id="panel-connect">
   <div class="panel">
-    <div class="panel-head"><span>🔌 连接 DeepSeek 桥接</span><button class="close">✕</button></div>
+    <div class="panel-head"><span>🔌 连接 DeepSeek 任务编排</span><button class="close">✕</button></div>
     <div class="panel-body">
       <div class="section-title">桥接服务器</div>
       <div class="conn-field">

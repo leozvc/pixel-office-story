@@ -14,3 +14,6 @@ nohup.out
 
 # 运行时状态（配对 token 持久化）
 pixel-office-bridge-state.json
+
+# DSH 任务编排运行时数据
+~/.dsh/pixel-office-story/

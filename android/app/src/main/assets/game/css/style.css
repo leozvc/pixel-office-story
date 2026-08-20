@@ -317,3 +317,15 @@ canvas { image-rendering: pixelated; }
 /* 隐藏滚动条 */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: #b0a080; border: 2px solid #8a6f52; }
+
+/* DSH 任务编排版补充样式 */
+#mic-btn {
+  background: #4a3520; border: 2px solid #1a120a; border-radius: 2px;
+  color: #f2d04a; font-size: 16px; padding: 4px 8px; cursor: pointer; flex: 0 0 auto;
+}
+#chat-input-wrap { display: flex; align-items: center; gap: 6px; }
+#chat-input-wrap input { flex: 1; }
+.hire-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.stat-working { color: #3d8b6f; font-weight: bold; }
+.kanban::-webkit-scrollbar { height: 6px; }
+textarea { width: 100%; background: #f4f1ea; color: #2f2b26; border: 1px solid #c8b8a0; border-radius: 4px; padding: 6px; font-size: 13px; resize: vertical; box-sizing: border-box; }

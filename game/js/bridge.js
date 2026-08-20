@@ -1,5 +1,5 @@
-// LLM 桥接客户端 —— 对接 DSH 桥接服务（DSH 任务编排版）
-// 负责：配对、token 管理、真实员工 agent 管理、任务派发、PM 对话
+// DSH 任务编排客户端 —— 对接自包含任务编排服务（8867）
+// 负责：配对、员工管理、任务看板、工作区、ASR 语音、PM 对话、完成通知
 window.Bridge = (function () {
   const S = GState;
   const SETTINGS_KEY = "pixelOfficeBridgeSettings";
@@ -34,7 +34,7 @@ window.Bridge = (function () {
       method: method || "GET",
       headers,
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(120000),
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.error || ("HTTP " + resp.status));
@@ -45,7 +45,7 @@ window.Bridge = (function () {
     return !!baseUrl() && !!settings.token;
   }
 
-  // 配对
+  // ---- 配对 ----
   async function requestPairCode() {
     if (!baseUrl()) throw new Error("请先填写服务器地址");
     return await req("/pair/request", "POST", {});
@@ -59,53 +59,51 @@ window.Bridge = (function () {
     return d;
   }
   function clearPair() {
-    settings.token = "";
-    settings.paired = false;
-    settings.model = "";
+    settings.token = ""; settings.paired = false; settings.model = "";
     saveSettings();
   }
   function setServer(s) { settings.server = (s || "").trim(); saveSettings(); }
   function setDeviceName(n) { settings.deviceName = (n || "").trim(); saveSettings(); }
-
-  // 健康检查
   async function health() {
     if (!baseUrl()) return { ok: false };
     try { return await req("/health", "GET"); }
     catch (e) { return { ok: false, error: e.message }; }
   }
 
-  // ---- DSH 任务编排 API ----
-  // 列出员工（真实 continuable 子代理）
-  async function listAgents() {
-    return await req("/v1/agents", "GET", null, settings.token);
-  }
-  // 雇佣员工
-  async function hireAgent(name, role) {
-    return await req("/v1/agents/hire", "POST", { name, role }, settings.token);
-  }
-  // 创建任务并指派
-  async function createTask(title, desc, assign) {
-    return await req("/v1/tasks", "POST", { title, desc, assign }, settings.token);
-  }
-  // 列出任务/员工实时状态
-  async function listTasks() {
-    return await req("/v1/tasks", "GET", null, settings.token);
-  }
-  // 指派单个任务给员工
-  async function assignTask(childId, taskText) {
-    return await req("/v1/tasks/assign", "POST", { childId, taskText }, settings.token);
-  }
-  // 读取员工会话日志（汇报用）
-  async function readLogs(childId) {
-    return await req("/v1/tasks/" + childId + "/logs", "GET", null, settings.token);
-  }
-  // PM 汇报
-  async function pmReport() {
-    return await req("/v1/pm/report", "POST", {}, settings.token);
-  }
-  // PM 对话（LLM 解读意图 + 调度）
+  // ---- 员工 ----
+  async function listEmployees() { return await req("/v1/employees", "GET", null, settings.token); }
+  async function hireEmployee(name, role) { return await req("/v1/employees/hire", "POST", { name, role }, settings.token); }
+  async function fireEmployee(id) { return await req("/v1/employees/fire", "POST", { id }, settings.token); }
+
+  // ---- 任务看板 ----
+  async function listTasks() { return await req("/v1/tasks", "GET", null, settings.token); }
+  async function createTask(title, desc, assign, workspace) { return await req("/v1/tasks", "POST", { title, desc, assign, workspace }, settings.token); }
+  async function dispatchTask(id) { return await req("/v1/tasks/dispatch", "POST", { id }, settings.token); }
+  async function setTaskStatus(id, status) { return await req("/v1/tasks/status", "POST", { id, status }, settings.token); }
+  async function listWorkspace(id) { return await req("/v1/tasks/" + id + "/workspace", "GET", null, settings.token); }
+
+  // ---- PM 对话 ----
   async function pmChat(messages, team, tasks) {
     return await req("/v1/pm/chat", "POST", { messages, team, tasks }, settings.token);
+  }
+
+  // ---- ASR 语音 ----
+  async function transcribeAudio(audioBlob) {
+    const url = baseUrl() + "/v1/asr";
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + settings.token },
+      body: audioBlob,
+      signal: AbortSignal.timeout(120000),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || ("HTTP " + resp.status));
+    return data.text || "";
+  }
+
+  // ---- 完成通知 ----
+  async function listNotifications(since) {
+    return await req("/v1/notifications?since=" + (since || 0), "GET", null, settings.token);
   }
 
   // 组装游戏状态给 PM
@@ -114,12 +112,8 @@ window.Bridge = (function () {
     return {
       companyName: Ss.companyName,
       connected: Ss.connected,
-      employees: Ss.employees.map(e => ({
-        id: e.id, name: e.name, role: e.role, status: e.status,
-      })),
-      tasks: Ss.tasks.map(t => ({
-        id: t.id, title: t.title, desc: t.desc, assign: t.assign, status: t.status,
-      })),
+      employees: Ss.employees.map(e => ({ id: e.id, name: e.name, role: e.role, status: e.status })),
+      tasks: Ss.tasks.map(t => ({ id: t.id, title: t.title, desc: t.desc, assign: t.assign, status: t.status })),
     };
   }
 
@@ -127,7 +121,9 @@ window.Bridge = (function () {
     loadSettings, saveSettings, getSettings,
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
-    listAgents, hireAgent, createTask, listTasks, assignTask, readLogs, pmReport, pmChat,
+    listEmployees, hireEmployee, fireEmployee,
+    listTasks, createTask, dispatchTask, setTaskStatus, listWorkspace,
+    pmChat, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };
 })();

@@ -183,7 +183,12 @@ window.UI = (function () {
     t.innerHTML = '<div class="toast-head"></div><div class="toast-body"></div>';
     t.querySelector(".toast-head").textContent = n.title;
     t.querySelector(".toast-body").textContent = n.body;
-    t.addEventListener("click", () => { n.read = true; S.emit(); t.remove(); openPanel("tasks"); });
+    t.addEventListener("click", () => {
+      n.read = true; S.emit(); t.remove();
+      openPanel("tasks");
+      // 若通知携带任务 id，直接打开任务详情（深链）
+      if (n.taskId) { renderKanban(); setTimeout(() => { openTaskDetail(n.taskId); }, 80); }
+    });
     el.toasts.appendChild(t);
     setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity .3s"; setTimeout(() => t.remove(), 300); }, 7000);
   }
@@ -196,7 +201,7 @@ window.UI = (function () {
         if (d.events && d.events.length) {
           for (const ev of d.events) {
             S.notify("任务完成 ✅", "「" + ev.title + "」已完成！", { icon: "star", type: "complete", important: true });
-            showToast({ title: "任务完成 ✅", body: "「" + ev.title + "」已完成，点击查看产出", important: true });
+            showToast({ title: "任务完成 ✅", body: "「" + ev.title + "」已完成，点击查看产出", important: true, taskId: ev.id });
             SFX.play("levelup");
           }
           PM.syncFromBridge().catch(() => {});

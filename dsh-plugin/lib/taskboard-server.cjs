@@ -9,6 +9,7 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const C = require("./taskboard-core.cjs");
+const DshSync = require("./taskboard-dsh-sync.cjs");
 
 const PORT = process.argv[2] === "--port" ? parseInt(process.argv[3], 10) : C.PORT;
 const HOST = C.HOST;
@@ -120,6 +121,8 @@ const server = http.createServer(async (req, res) => {
       for (const name of task.assign) { const e = es.find(x => x.name === name || x.roleName === name); if (e) task.assigneeIds.push(e.id); }
       const k = C.loadKanban(); k.tasks.push(task); C.saveKanban(k);
       fs.mkdirSync(task.workspace, { recursive: true });
+      // 同步到 DSH web 任务看板（不阻塞响应）
+      DshSync.syncTaskToDsh(task).catch(e => console.log("[pixb-sync] create 同步失败:", e.message));
       C.json(res, 200, { ok: true, task });
       return;
     }
@@ -129,7 +132,15 @@ const server = http.createServer(async (req, res) => {
       const t = k.tasks.find(x => x.id === b.id);
       if (!t) { C.json(res, 404, { ok: false, error: "task not found" }); return; }
       queueDispatch(t);
+      // 同步到 DSH web 看板
+      DshSync.syncTaskToDsh(t).catch(e => console.log("[pixb-sync] dispatch 同步失败:", e.message));
       C.json(res, 200, { ok: true, status: "dispatched" });
+      return;
+    }
+    if (req.method === "POST" && pathname === "/v1/tasks/sync") {
+      const k = C.loadKanban();
+      const results = await DshSync.syncAllToDsh(k.tasks);
+      C.json(res, 200, { ok: true, synced: results.length, results });
       return;
     }
     if (req.method === "POST" && pathname === "/v1/tasks/status") {
@@ -138,6 +149,7 @@ const server = http.createServer(async (req, res) => {
       const t = k.tasks.find(x => x.id === b.id);
       if (!t) { C.json(res, 404, { ok: false, error: "task not found" }); return; }
       if (b.status && ["todo", "doing", "done"].includes(b.status)) { t.status = b.status; t.updatedAt = Date.now(); C.saveKanban(k); }
+      DshSync.syncTaskToDsh(t).catch(e => console.log("[pixb-sync] status 同步失败:", e.message));
       C.json(res, 200, { ok: true, task: { ...t, history: undefined } });
       return;
     }

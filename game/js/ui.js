@@ -407,8 +407,8 @@ window.UI = (function () {
           : t.status === "failed" ? '<span style="color:#e06c5a">❌ 失败</span>'
           : t.status === "doing" ? '<span style="color:#f2d04a">⏳ ' + esc(stageTxt||"执行中") + '</span>'
           : '<span style="color:#cfe0ff">待办</span>';
-        // 子任务进度（若存在）
-        const subHtml = (t.subtasks && t.subtasks.length) ? `<div style="font-size:10px;color:#b0a080;margin-top:4px">子任务 ${t.subtasks.filter(s=>s.done).length}/${t.subtasks.length}：${esc(t.currentSubtask||"")}</div>` : "";
+        // 子任务进度（若存在）—— 分段像素进度条
+        const subHtml = (t.subtasks && t.subtasks.length) ? `<div style="font-size:10px;color:#b0a080;margin-top:4px">子任务 ${t.subtasks.filter(s=>s.done).length}/${t.subtasks.length}：${esc(t.currentSubtask||"")}</div><div class="sub-progress">${t.subtasks.map(s => '<i class="' + (s.done ? "on" : (t.currentSubtask === s.title ? "cur" : "")) + '"></i>').join("")}</div>` : "";
         const prioHtml = { high: '<span style="color:#e06c5a">🔺高</span>', medium: '<span style="color:#f2d04a">▪中</span>', low: '<span style="color:#5fbf8f">▫低</span>' }[t.priority||"medium"] || "";
         card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
             <div style="font-weight:bold;font-size:13px;flex:1">${esc(t.title)}</div>${prioHtml}

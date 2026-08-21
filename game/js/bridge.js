@@ -101,6 +101,10 @@ window.Bridge = (function () {
   async function pmReport() {
     return await req("/v1/pm/report", "POST", {}, settings.token);
   }
+  // PM 行动建议
+  async function pmSuggest() {
+    return await req("/v1/pm/suggest", "POST", {}, settings.token);
+  }
 
   // ---- ASR 语音 ----
   async function transcribeAudio(audioBlob) {
@@ -138,7 +142,7 @@ window.Bridge = (function () {
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
     listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats,
-    pmChat, pmReport, transcribeAudio, listNotifications,
+    pmChat, pmReport, pmSuggest, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };
 })();

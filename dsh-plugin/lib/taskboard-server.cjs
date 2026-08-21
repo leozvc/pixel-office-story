@@ -388,6 +388,27 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true, content, model: C.FAST_MODEL });
       return;
     }
+    // PM 主动建议（LLM 结合公司记忆/任务历史给出下一步行动建议）
+    if (req.method === "POST" && pathname === "/v1/pm/suggest") {
+      const k = C.loadKanban();
+      const es = C.loadEmployees();
+      const memory = C.buildMemorySummary();
+      const doneTasks = k.tasks.filter(t => t.status === "done");
+      const doingTasks = k.tasks.filter(t => t.status === "doing");
+      const todoTasks = k.tasks.filter(t => t.status === "todo");
+      const data = {
+        stats: { total: k.tasks.length, done: doneTasks.length, doing: doingTasks.length, todo: todoTasks.length },
+        done: doneTasks.slice(-10).map(t => ({ title: t.title, assign: t.assign || [], output: (t.output || "").slice(0, 80) })),
+        doing: doingTasks.map(t => ({ title: t.title })),
+        todo: todoTasks.map(t => ({ title: t.title })),
+        employees: es.map(e => ({ name: e.name, role: e.roleName, status: e.status, done: (e.stats && e.stats.tasksDone) || 0, skills: Object.keys((e.stats && e.stats.domains) || {}) })),
+        history: (memory || "").slice(0, 400),
+      };
+      const sys = "你是《像素办公室物语》的项目经理佐藤美咲。请基于公司的历史任务、团队能力和长期记忆，为老板提出下一步行动建议。输出（中文，Markdown）：\n\n# PM 行动建议\n\n## 团队现状\n- 一句话概括团队状态\n\n## 建议任务（2-3条）\n- 每条：任务标题 + 一句话理由（为什么现在做）\n\n## 风险与提示\n- 1 条可能的注意事项\n\n数据（JSON）：" + JSON.stringify(data);
+      const content = await C.llm([{ role: "system", content: sys }, { role: "user", content: "请基于以上数据给出你的行动建议（用中文 Markdown）。" }], { maxTokens: 800, timeout: 90000 });
+      C.json(res, 200, { ok: true, content, model: C.FAST_MODEL });
+      return;
+    }
 
     // ---- ASR（whisper） ----
     if (req.method === "POST" && pathname === "/v1/asr") {

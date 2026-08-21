@@ -378,9 +378,12 @@ window.UI = (function () {
     const reportBtn = document.createElement("button");
     reportBtn.className = "btn gray"; reportBtn.textContent = "📋 周报";
     reportBtn.addEventListener("click", renderWeeklyReport);
+    const suggestBtn = document.createElement("button");
+    suggestBtn.className = "btn blue"; suggestBtn.textContent = "💡 建议";
+    suggestBtn.addEventListener("click", renderPmSuggest);
     const btnWrap = document.createElement("div");
     btnWrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
-    btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(addBtn);
+    btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(addBtn);
     top.appendChild(cnt); top.appendChild(btnWrap);
     body.appendChild(top);
 
@@ -539,6 +542,31 @@ window.UI = (function () {
       body.appendChild(pre);
       UI.addPM("【项目周报】\n" + content.slice(0, 300));
     } catch (e) { body.innerHTML += '<div class="notif-empty">周报生成失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
+
+  // ---------- PM 行动建议 ----------
+  async function renderPmSuggest() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("💡 PM 行动建议"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">PM 正在分析公司状态…（约 10 秒）</div>';
+    try {
+      const d = await Bridge.pmSuggest();
+      const content = d.content || "(无内容)";
+      body.innerHTML = "";
+      body.appendChild(sec("💡 PM 行动建议"));
+      const pre = document.createElement("div");
+      pre.style.cssText = "font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:10px;border-radius:4px;line-height:1.6";
+      pre.textContent = content;
+      body.appendChild(pre);
+      UI.addPM("【PM 行动建议】\n" + content.slice(0, 300));
+    } catch (e) { body.innerHTML += '<div class="notif-empty">建议生成失败：' + esc(e.message||"") + "</div>"; }
     const back = document.createElement("button");
     back.className = "btn gray"; back.textContent = "← 返回看板";
     back.style.cssText = "margin-top:12px;width:100%";

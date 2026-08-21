@@ -97,7 +97,18 @@ window.UI = (function () {
     const brief = window.Bridge && Bridge.isConfigured()
       ? `${company}目前有 ${emps} 名员工、${tasks} 项任务，公司资金 ${funds}。`
       : "本版本已接入真实 DeepSeek harness，先点右上角 ⚡ 连接任务编排服务。";
-    return `${day}，老板！我是项目经理佐藤美咲。${brief}\n\n你可以：\n· 说「招个程序员/美术/测试/运营」雇佣员工（需花费资金）\n· 说「帮我安排一个任务：…」创建任务（自动拆解子任务并执行）\n· 任务交付后可给员工提反馈，员工会自动修订再交付\n· 点 🎤 语音直接跟我说话\n· 点 📋 看任务看板 / 生成周报 / 查看统计 / 项目总览\n· 说「汇报进度」查看所有任务状态`;
+    // 针对性下一步建议（新手引导）
+    let hint = "";
+    if (window.Bridge && Bridge.isConfigured()) {
+      if (emps === 0) hint = "\n💡 建议：先「招个程序员」雇一名员工开始。";
+      else if (tasks === 0) hint = "\n💡 建议：跟我说「帮我安排一个任务：…」迈出第一步，或点 📌 模板一键创建。";
+      else {
+        const undone = Ss.tasks.filter(t => t.status !== "done").length;
+        if (undone === 0) hint = "\n💡 建议：任务都完成了！可以点 💡 建议看看 PM 的下一步建议，或点 📌 模板开新任务。";
+        else hint = "\n💡 建议：有 " + undone + " 个任务在执行中，跟我说「汇报进度」查看。";
+      }
+    }
+    return `${day}，老板！我是项目经理佐藤美咲。${brief}${hint}\n\n你可以：\n· 说「招个程序员/美术/测试/运营」雇佣员工（需花费资金）\n· 说「帮我安排一个任务：…」创建任务（自动拆解子任务并执行）\n· 任务交付后可给员工提反馈，员工会自动修订再交付\n· 点 🎤 语音直接跟我说话\n· 点 📋 看任务看板 / 生成周报 / 查看统计 / 项目总览\n· 说「汇报进度」查看所有任务状态`;
   }
   function startBoot() {
     try {

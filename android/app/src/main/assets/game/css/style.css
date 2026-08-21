@@ -3,9 +3,12 @@
 html, body { width: 100%; height: 100%; overflow: hidden; }
 body {
   background: #2b2118;
-  font-family: "MisekiBitmap", "PixelMplus10", "Courier New", monospace;
+  /* 用系统清晰字体保证可读性（像素字体仅用于装饰标题） */
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
   color: #3b2b20;
-  image-rendering: pixelated;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
@@ -14,6 +17,12 @@ body {
   font-family: "MisekiBitmap";
   src: url("../assets/fonts/MisekiBitmap.ttf") format("truetype");
   font-display: block;
+}
+/* 像素字体仅用于 logo/标题等装饰性文字 */
+.pixel-font {
+  font-family: "MisekiBitmap", "Courier New", monospace;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
 }
 canvas { image-rendering: pixelated; }
 
@@ -85,11 +94,12 @@ canvas { image-rendering: pixelated; }
 }
 #chat-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 4px 8px;
+  padding: 5px 10px;
   background: linear-gradient(#d94f2b, #b83a1e);
   border-bottom: 2px solid #7a2410;
   color: #fff;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
 }
 #chat-head .pm-avatar {
   width: 22px; height: 22px;
@@ -117,8 +127,8 @@ canvas { image-rendering: pixelated; }
 }
 .msg .bubble {
   background: #fff; border: 2px solid #4a3728;
-  border-radius: 3px; padding: 6px 9px;
-  font-size: 13px; line-height: 1.5;
+  border-radius: 3px; padding: 8px 11px;
+  font-size: 15px; line-height: 1.6;
   white-space: pre-wrap; word-break: break-word;
   box-shadow: 2px 2px 0 rgba(74,55,40,0.18);
 }
@@ -127,11 +137,11 @@ canvas { image-rendering: pixelated; }
 .msg.boss .bubble { background: #fff4e0; border-color: #b83a1e; }
 .msg.sys { align-self: center; max-width: 95%; }
 .msg.sys .bubble {
-  background: #efe6d0; border-color: #8a6f52; font-size: 12px; color: #6e5f50;
+  background: #efe6d0; border-color: #8a6f52; font-size: 13px; color: #6e5f50;
   box-shadow: none; text-align: center;
 }
 .msg.sys .avatar { display: none; }
-.msg .name { font-size: 11px; color: #8a6f52; margin-bottom: 2px; display: block; }
+.msg .name { font-size: 12px; color: #8a6f52; margin-bottom: 2px; display: block; }
 .msg.boss .name { text-align: right; }
 
 #chat-input-wrap {
@@ -213,8 +223,8 @@ canvas { image-rendering: pixelated; }
 .notif-item.unread { border-color: #d94f2b; background: #fff4e0; }
 .notif-item img { width: 18px; height: 18px; margin-top: 2px; }
 .notif-item .nt { flex: 1; }
-.notif-item .nt .t { font-weight: bold; font-size: 13px; }
-.notif-item .nt .b { font-size: 12px; color: #6e5f50; margin-top: 2px; }
+.notif-item .nt .t { font-weight: bold; font-size: 14px; }
+.notif-item .nt .b { font-size: 13px; color: #6e5f50; margin-top: 2px; }
 .notif-item .nt .tm { font-size: 10px; color: #b0a090; margin-top: 2px; }
 .notif-empty { text-align: center; color: #8a6f52; padding: 30px 0; font-size: 13px; }
 
@@ -263,7 +273,7 @@ canvas { image-rendering: pixelated; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* 档案区 */
-.section-title { font-size: 13px; font-weight: bold; color: #8a6f52; margin: 12px 0 6px; border-bottom: 2px solid #d8c9a3; padding-bottom: 3px; }
+.section-title { font-size: 14px; font-weight: bold; color: #8a6f52; margin: 12px 0 6px; border-bottom: 2px solid #d8c9a3; padding-bottom: 3px; }
 .archive-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border: 2px solid #d8c9a3; border-radius: 3px; margin-bottom: 5px; background: #fff; font-size: 12px; }
 .archive-item .stars { color: #d8a838; }
 

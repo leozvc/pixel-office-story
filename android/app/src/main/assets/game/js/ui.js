@@ -714,7 +714,9 @@ window.UI = (function () {
           <button class="btn green" data-restore="${esc(a.id)}" style="flex-shrink:0;padding:3px 8px;font-size:11px">↩ 恢复</button></div>
           <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((a.assign||[]).join("、") || "待定")} · 归档于 ${new Date(a.archivedAt||Date.now()).toLocaleDateString()}</div>
           <div style="font-size:11px;color:#8a6f52;margin-top:4px;word-break:break-all">工作区：${esc(a.workspace||"")}</div>
-          ${a.output ? '<div style="font-size:11px;color:#6e5f50;margin-top:4px;max-height:60px;overflow:hidden;white-space:pre-wrap">' + esc(a.output.slice(0,150)) + '</div>' : ""}`;
+          <div style="font-size:11px;color:#6e5f50;margin-top:4px;white-space:pre-wrap">${a.output ? esc(a.output.slice(0,200)) + (a.output.length > 200 ? "…" : "") : "(无产出)"}</div>
+          <span class="arch-toggle" style="font-size:10px;color:#f2d04a;margin-top:4px;display:inline-block">▼ 展开产出</span>
+          <div class="arch-full" style="display:none;font-size:11px;color:#6e5f50;margin-top:4px;white-space:pre-wrap;background:#3a2a1a;border:1px solid #1a120a;border-radius:4px;padding:8px;max-height:300px;overflow-y:auto">${esc(a.output||"(无产出)")}</div>`;
         card.querySelector("[data-restore]").addEventListener("click", async (e) => {
           e.stopPropagation();
           try {
@@ -722,6 +724,16 @@ window.UI = (function () {
             addPM("已把「" + a.title + "」恢复到任务看板（待办）。");
             renderArchived();
           } catch (err) { addPM("恢复失败：" + (err.message||"")); }
+        });
+        // 点击卡片展开/收起完整产出
+        const outDiv = card.querySelector(".arch-full");
+        card.style.cursor = "pointer";
+        card.addEventListener("click", (e) => {
+          if (e.target.closest("[data-restore]")) return;
+          if (!outDiv) return;
+          const hidden = outDiv.style.display === "none";
+          outDiv.style.display = hidden ? "block" : "none";
+          card.querySelector(".arch-toggle").textContent = hidden ? "▲ 收起" : "▼ 展开产出";
         });
         body.appendChild(card);
       }
@@ -1320,5 +1332,5 @@ window.UI = (function () {
     } catch (e) { return false; }
   }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, renderAchievements, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany, claimDaily, checkAchievements };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, renderAchievements, renderArchived, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany, claimDaily, checkAchievements };
 })();

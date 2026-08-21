@@ -12,7 +12,7 @@ window.PM = (function () {
       const Ss = S.get();
       Ss.employees = (empRes && empRes.employees || []).map(e => ({
         id: e.id, name: e.name, role: e.role, roleName: e.roleName,
-        emoji: e.emoji, status: e.status, label: e.roleName,
+        emoji: e.emoji, status: e.status, label: e.roleName, skill: e.skill || {},
       }));
       Ss.tasks = (taskRes && taskRes.tasks || []).map(t => ({
         id: t.id, title: t.title, desc: t.desc, assign: t.assign || [],

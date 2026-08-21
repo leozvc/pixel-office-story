@@ -242,11 +242,14 @@ window.UI = (function () {
     if (!Ss.employees.length) { body.innerHTML += '<div class="notif-empty">还没有员工。跟 PM 说「招个程序员」。</div>'; }
     for (const e of Ss.employees) {
       const statusZh = { working: "工作中", busy: "忙碌", idle: "空闲" }[e.status] || e.status;
+      const sk = e.skill || {};
+      const domains = (sk.domains || []).join("、");
       const card = document.createElement("div");
       card.className = "emp-card";
       card.innerHTML = `<div class="emp-portrait">${esc(e.emoji || "👤")}</div>
-        <div class="emp-info"><div class="ename">${esc(e.name)} ${esc(e.roleName || "")}</div>
-        <div class="erole">${esc(e.label || "")} · <span class="${e.status === 'working' ? 'stat-working' : ''}">${esc(statusZh)}</span></div></div>`;
+        <div class="emp-info"><div class="ename">${esc(e.name)} ${esc(e.roleName || "")} <span style="font-size:10px;color:#f2d04a">Lv.${sk.level||1}</span></div>
+        <div class="erole">${esc(e.label || "")} · <span class="${e.status === 'working' ? 'stat-working' : ''}">${esc(statusZh)}</span></div>
+        ${sk.tasksDone ? `<div class="eskill" style="font-size:11px;color:#8a6f52;margin-top:2px">已完成 ${sk.tasksDone} 项 · 经验 ${sk.xp||0}${domains ? " · 擅长：" + esc(domains) : ""}</div>` : ""}</div>`;
       body.appendChild(card);
     }
     const hireRow = document.createElement("div");

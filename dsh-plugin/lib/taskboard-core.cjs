@@ -147,6 +147,34 @@ function createEmployee(name, role) {
 function empHistory(empId) { const e = loadEmployees().find(x => x.id === empId); return e ? e.history : []; }
 function saveEmpHistory(empId, history) { const es = loadEmployees(); const e = es.find(x => x.id === empId); if (e) { e.history = history; saveEmployees(es); } }
 
+// ---- 员工技能成长 ----
+// 员工完成任务后累积经验、升级、记录擅长领域
+function recordTaskCompletion(empId, task) {
+  const es = loadEmployees();
+  const e = es.find(x => x.id === empId);
+  if (!e) return;
+  if (!e.stats) e.stats = { tasksDone: 0, xp: 0, level: 1, domains: {} };
+  e.stats.tasksDone = (e.stats.tasksDone || 0) + 1;
+  e.stats.xp = (e.stats.xp || 0) + 10;
+  // 每 30 经验升 1 级
+  e.stats.level = Math.floor((e.stats.xp || 0) / 30) + 1;
+  // 领域归类：按任务标题关键词粗判擅长方向
+  const t = task.title || "";
+  const domain = /登录|界面|设计|配色|UI/.test(t) ? "UI设计"
+    : /代码|开发|功能|接口|规范/.test(t) ? "开发"
+    : /文案|宣传|运营|活动|市场/.test(t) ? "运营"
+    : /测试|bug|质量/.test(t) ? "测试"
+    : "综合";
+  e.stats.domains[domain] = (e.stats.domains[domain] || 0) + 1;
+  saveEmployees(es);
+}
+// 员工技能视图（供前端展示）
+function employeeSkillView(emp) {
+  const st = emp.stats || { tasksDone: 0, xp: 0, level: 1, domains: {} };
+  const domains = Object.entries(st.domains || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => k);
+  return { tasksDone: st.tasksDone || 0, xp: st.xp || 0, level: st.level || 1, domains };
+}
+
 // 员工执行任务：LLM 线程 + 产出落盘工作区
 async function executeTask(emp, task, onStage) {
   const history = empHistory(emp.id);
@@ -203,4 +231,4 @@ function transcribe(audioPath) {
 
 function localIPs() { const l = []; const ifs = os.networkInterfaces(); for (const k of Object.keys(ifs)) for (const i of ifs[k] || []) if (i.family === "IPv4" && !i.internal) l.push(i.address); return l; }
 
-module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, server: undefined };
+module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, server: undefined };

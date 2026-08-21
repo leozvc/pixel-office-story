@@ -69,9 +69,10 @@ async function dispatchTask(task) {
         t.status = "done";
         t.updatedAt = Date.now();
         C.saveKanban(k);
-        // 记入公司长期记忆
+        // 记入公司长期记忆 + 员工技能成长
         C.rememberTask(t);
         C.rememberEvent(`完成任务《${t.title}》`);
+        for (const eid of (t.assigneeIds || [])) C.recordTaskCompletion(eid, t);
       }
     } catch (e) {
       const k = C.loadKanban();
@@ -155,7 +156,7 @@ const server = http.createServer(async (req, res) => {
 
     // ---- 员工 ----
     if (req.method === "GET" && pathname === "/v1/employees") {
-      C.json(res, 200, { ok: true, employees: C.loadEmployees().map(e => ({ id: e.id, name: e.name, role: e.role, roleName: e.roleName, emoji: e.emoji, status: e.status, createdAt: e.createdAt })) });
+      C.json(res, 200, { ok: true, employees: C.loadEmployees().map(e => ({ id: e.id, name: e.name, role: e.role, roleName: e.roleName, emoji: e.emoji, status: e.status, createdAt: e.createdAt, skill: C.employeeSkillView(e) })) });
       return;
     }
     if (req.method === "POST" && pathname === "/v1/employees/hire") {

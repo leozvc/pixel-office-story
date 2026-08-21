@@ -1,37 +1,36 @@
 # 像素办公室物语 (Pixel Office Story)
 
-一个 **日式像素风** 的 Android 客户端，但内核是 **DeepSeek Harness 任务编排器**。
-你是一家游戏公司的老板，通过唯一的对话窗口——项目经理佐藤美咲——指挥**真实运行的 DSH AI agent 员工**
-完成工作任务并汇报，形成"安排任务 → agent 执行 → PM 汇报"的闭环。
+一个 **日式像素风** 的 Android 客户端，内核是 **DeepSeek Harness 任务编排器**。
+你是一家游戏公司的老板，通过项目经理佐藤美咲，指挥 AI agent 员工完成任务并汇报，形成
+「安排任务 → agent 执行 → PM 汇报」的闭环。任务自动同步到 DeepSeek harness web 的任务看板。
 
-> 本版本已**去掉离线模拟玩法**（金钱/声誉/升级/接单模拟等），专注打通 DeepSeek harness：
-> 员工都是真实创建的 DSH 子代理（`subagents.startContinuable`），任务都真实派发给它们执行。
+> 本版本已去掉离线模拟玩法（金钱/声誉/升级/接单模拟等），专注打通 DeepSeek harness。
 
 ## 玩法
 
-- **连接 DSH**：点右上角 ⚡ 打开「连接」面板，填入 DSH 桥接地址并配对
-- **招员工**：说「招人 / 招程序员 / 招美术 / 招测试 / 招运营」→ PM 创建真实 DSH agent 员工
-- **安排任务**：说「帮我安排一个任务：…」→ PM 理解后把任务派给合适的员工 agent 真实执行
-- **汇报**：说「汇报进度」→ PM 读取各员工 agent 的真实工作产出并汇总汇报
-- **任务工作台**：📋 面板实时查看各员工 agent 的工作状态与最近产出
-- **消息通知**：新员工入职 / 任务派发 等弹出像素风 toast
-- **音效**：程序化 chiptune 音效 + BGM（纯 WebAudio 合成，无外部音频文件）
+- **连接**：点右上角 ⚡ 打开「连接」面板，填入任务编排服务地址并配对
+- **招员工**：说「招人 / 招程序员 / 招美术 / 招测试 / 招运营」
+- **安排任务**：说「帮我安排一个任务：…」→ PM 把任务派给合适的员工 agent 真实执行
+- **语音**：点 🎤 录音说话 → 宿主 whisper 转文字 → 发给 PM（快问快答）
+- **汇报**：说「汇报进度」→ PM 汇总任务看板与员工产出
+- **任务看板**：📋 多列看板（待办/执行中/已完成），任务卡含标题/描述/负责人/工作区/状态/产出
+- **完成通知**：任务完成后弹出「任务完成 ✅」toast 提醒
+- **音效**：程序化 chiptune 音效 + BGM（纯 WebAudio 合成）
 
 ## 员工角色
 
 | 角色 | 说明 |
 |------|------|
-| 项目经理 PM | 佐藤美咲，你的唯一对话窗口（真实 LLM 大脑） |
-| 程序员 dev | 真实 DSH agent，接开发任务产出代码/方案 |
-| 美术 art | 真实 DSH agent，接美术任务产出设计/文案 |
-| 测试 qa | 真实 DSH agent，接测试任务产出测试报告 |
-| 运营 ops | 真实 DSH agent，接运营任务产出方案/文案 |
+| 项目经理 PM | 佐藤美咲，唯一对话窗口（真实 LLM 大脑） |
+| 程序员 dev | 接开发任务，产出代码/方案 |
+| 美术 art | 接美术任务，产出设计/文案 |
+| 测试 qa | 接测试任务，产出测试报告 |
+| 运营 ops | 接运营任务，产出方案/文案 |
 
 ## 技术实现
 
-- 纯 HTML5 Canvas + JS，零图片资源（所有像素画程序化生成）
-- 内置 CJK 像素字体（MisekiBitmap，15622 字符全覆盖）
-- 游戏状态 localStorage 持久化
+- 纯 HTML5 Canvas + JS，零图片资源（像素画程序化生成）
+- 内置 CJK 像素字体（MisekiBitmap）
 - 程序化 chiptune 音频引擎
 - Android 端：WebView 全屏沉浸式壳（`com.pixelboss.office`）
 
@@ -39,23 +38,14 @@
 
 ```
 game/                  # 游戏本体（纯 Web）
-  index.html
-  css/style.css
-  js/
-    palette.js         # 调色板
-    sprites.js         # 程序化像素画
-    audio.js           # 音效/BGM 引擎
-    data.js            # 内容数据
-    state.js           # 存档状态
-    engine.js          # 核心模拟+场景渲染
-    pm.js              # PM 对话大脑
-    ui.js              # HUD/聊天/通知/面板
-  assets/fonts/        # 像素字体
-android/               # Android 工程（Gradle + AGP 8.2.2）
-  app/src/main/
-    java/com/pixelboss/office/MainActivity.java
-    assets/game/       # 打包的游戏本体
-test/                  # CDP 浏览器自动化测试
+  index.html / css/ / js/（palette/sprites/audio/data/state/engine/pm/ui/bridge）
+android/               # Android 工程（Gradle）
+  app/src/main/assets/game/   # 打包的游戏本体
+dsh-plugin/            # DSH 侧服务
+  lib/taskboard-server.cjs    # 自包含任务编排 HTTP 服务（8867）
+  lib/taskboard-core.cjs      # 任务看板/员工/工作区核心
+  lib/taskboard-dsh-sync.cjs  # 同步任务到 DSH web 任务看板
+test/                  # CDP 自动化测试
 ```
 
 ## 构建 APK
@@ -63,94 +53,43 @@ test/                  # CDP 浏览器自动化测试
 ```bash
 export ANDROID_HOME=/opt/android-sdk
 cd android
-/opt/gradle/gradle-8.5/bin/gradle assembleRelease
-# 输出: app/build/outputs/apk/release/app-release.apk
+gradle assembleDebug
+# 输出: app/build/outputs/apk/debug/app-debug.apk
 ```
 
 APK 已签名（debug keystore），可直接安装。
 
----
+## DSH 侧服务
 
-# 对接 DeepSeek Harness（DSH 任务编排）
-
-游戏 PM 接入真实 DeepSeek harness，并把任务编排给**真实运行的 DSH agent 员工**执行。
-
-## 架构
-
-```
-┌────────────┐   HTTP(配对token)   ┌─────────────────────────────┐
-│ APK 游戏    │ ──────────────────► │ DSH 桥接插件（dsh-plugin）    │
-│ (手机/模拟器) │ ◄────────────────── │ dsh-plugin/lib/server.js    │
-└────────────┘   /v1/*             │ 监听 0.0.0.0:8866            │
-                                    │  · 配对鉴权 + LLM 代理       │
-                                    │  · 员工 agent 编排：          │
-                                    │     subagents.startContinuable│
-                                    │     （每个员工=真实 DSH 子代理）│
-                                    │  · 任务派发：subagents.followup│
-                                    │  · PM 汇报：sessionQuery 读日志│
-                                    └──────────────┬──────────────┘
-                                                   │
-                                    ┌──────────────▼──────────────┐
-                                    │ DeepSeek Harness 宿主          │
-                                    │ (agents / subagents /          │
-                                    │  sessionQuery 服务)            │
-                                    └──────────────────────────────┘
-```
-
-- **DSH 端**：`dsh-plugin/` 作为 DSH profile bundle 插件常驻，`ctx.on('ready')` 时启动桥接 HTTP 服务
-  - 建立稳定 parent agent（公司负责人），用 `subagents.startContinuable` 创建员工 agent
-  - 用 `subagents.followup` 派发任务，用 `sessionQuery.readSession` 读取员工产出供 PM 汇报
-- **APK 端**：游戏内「⚡ 连接」面板进行配对
-
-## 配对流程（鉴权）
-
-1. 打开游戏 → 点右上角 ⚡ → 填 DSH 桥接地址（局域网 IP `http://<宿主>:8866`，USB 可用 `http://127.0.0.1:8866` + `adb reverse`）
-2. 点「获取配对码」→ 桥接生成 6 位配对码（10 分钟有效，一次性）
-3. 填配对码 → 「确认配对」→ 换取设备 token（7 天有效，持久化）
-4. 配对成功后 PM 接入真实 DeepSeek，可同步/雇佣真实 agent 员工
-
-## DSH 任务编排能力
-
-PM 通过系统提示词理解老板意图并输出动作 JSON，由**自包含任务编排服务**执行：
-- 招聘（`hire`：dev/art/qa/ops）→ 创建真实 LLM 会话线程员工
-- 安排任务（`create_task`：title/desc/assign/workspace）→ 创建任务卡 + 独立工作区，员工真实执行并产出落盘
-- 汇报（`report`）→ 汇总任务看板与员工产出
-- 闲聊（`none`）
-
-> 本版本已移除离线规则引擎与接单/升级等模拟玩法；未配对时游戏只提示连接 DSH，不进行模拟。
-
-### 自包含任务编排服务（8867）
-
-`dsh-plugin/lib/taskboard-server.cjs` 是独立的 DSH 任务编排 HTTP 服务，**无需重启 DSH**：
-- 任务看板（todo/doing/done 多列，任务卡含标题/描述/负责人/工作区/状态/产出）
-- 工作区管理（默认 `~/.dsh/pixel-office-story/workspace/tasks/<taskId>/`，可在任务卡指定任意目录）
-- 员工 = LLM 会话线程，真实执行任务并把产出写入工作区（`TASK.md`）
-- ASR 语音（录音 → 宿主 whisper → 文字 → PM）
-- PM 快问快答（低思考模式模型 `wps-ai/deepseek/deepseek-v4-flash-0731`）
-- 完成通知（`/v1/notifications` 供 APK 轮询）
+### 任务编排服务（8867）— 自包含，无需重启 DSH
 
 ```bash
 node dsh-plugin/lib/taskboard-server.cjs --port 8867
 ```
 
-> 保留的 `dsh-plugin` 原 bridge（8866，DSH 插件）仍可用于真实 DSH 子代理模式；本版游戏默认连 8867 任务编排服务。
+- **配对鉴权**：6 位一次性配对码（10 分钟）→ 7 天 token
+- **任务看板**：todo/doing/done 多列，任务卡含标题/描述/负责人/工作区/状态/产出
+- **工作区管理**：默认 `~/.dsh/pixel-office-story/workspace/tasks/<taskId>/`，可指定任意目录
+- **员工**：LLM 会话线程（带岗位 persona），真实执行任务并把产出写入工作区（`TASK.md`）
+- **ASR**：录音 → 宿主 whisper → 文字 → PM
+- **PM 快问快答**：低思考模式模型（`wps-ai/deepseek/deepseek-v4-flash-0731`）
+- **完成通知**：`/v1/notifications` 供 APK 轮询
 
-## 测试
+### 同步到 DSH web 任务看板
 
-`test/` 目录下 CDP 自动化测试：
-- `smoke.js` 基础加载
-- `device_acceptance.js` 真机/模拟器 DSH 全流程验收（配对→雇佣真实 agent→派发任务→查看产出）
+游戏任务在创建/更新时，由 `taskboard-dsh-sync.cjs` 调用 DSH web 的
+`/api/task-board/action`（带 `Origin` 头通过同源鉴权）同步到「任务看板」插件，可在
+DeepSeek harness web 界面查看。手动全量同步：`POST /v1/tasks/sync`。
 
-```bash
-node test/device_acceptance.js
-```
+> 说明：DSH task-board 插件的 `move` API 仅支持 backlog/todo 且 running 任务不可移动，
+> 因此 DSH 看板中的游戏任务状态显示为 todo；游戏内看板显示真实状态（todo/doing/done）。
 
-### 真机/模拟器验收测试
+## 真机/模拟器验收测试
 
 ```bash
 # 1. 构建并安装 APK
 cd android && gradle assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk   # 模拟器直接安装，HyperOS 需在弹窗点「继续安装」
+adb install -r app/build/outputs/apk/debug/app-debug.apk   # HyperOS 需在弹窗点「继续安装」
 
 # 2. 启动游戏
 adb shell am start -n com.pixelboss.office/.MainActivity
@@ -158,13 +97,12 @@ adb shell am start -n com.pixelboss.office/.MainActivity
 # 3. 转发 WebView CDP 调试端口（游戏 WebView 默认开启调试）
 adb forward tcp:9222 localabstract:webview_devtools_remote_$(adb shell pidof com.pixelboss.office)
 
-# 4. 转发桥接端口（USB/模拟器联机配对，经 127.0.0.1:8866 访问宿主 DSH 桥接）
-adb reverse tcp:8866 tcp:8866
+# 4. 转发任务编排服务端口（USB/模拟器联机，经 127.0.0.1:8867 访问宿主）
+adb reverse tcp:8867 tcp:8867
 
 # 5. 运行 DSH 全流程验收测试
 node test/device_acceptance.js
 ```
 
-> **Wi-Fi 局域网配对（推荐）**：手机与宿主在同一局域网时，直接在游戏内「⚡ 连接」面板填宿主
-> 局域网 IP（如 `http://192.168.1.100:8866`）即可配对，无需 `adb reverse`。桥接服务监听
-> `0.0.0.0:8866`，员工为真实 DSH 子代理。
+> **局域网配对**：手机/模拟器与宿主在同一网络时，在游戏内「⚡ 连接」面板填宿主
+> 局域网 IP（如 `http://192.168.1.100:8867`）即可配对，无需 `adb reverse`。任务编排服务监听 `0.0.0.0:8867`。

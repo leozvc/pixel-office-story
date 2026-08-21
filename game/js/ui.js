@@ -529,11 +529,13 @@ window.UI = (function () {
           : '<span style="color:#cfe0ff">待办</span>';
         // 子任务进度（若存在）—— 分段像素进度条
         const subHtml = (t.subtasks && t.subtasks.length) ? `<div style="font-size:10px;color:#b0a080;margin-top:4px">子任务 ${t.subtasks.filter(s=>s.done).length}/${t.subtasks.length}：${esc(t.currentSubtask||"")}</div><div class="sub-progress">${t.subtasks.map(s => '<i class="' + (s.done ? "on" : (t.currentSubtask === s.title ? "cur" : "")) + '"></i>').join("")}</div>` : "";
+        // 修订次数徽标
+        const revHtml = (t.feedback && t.feedback.length) ? `<span style="color:#f2d04a;font-size:10px;margin-left:4px">🔄${t.feedback.length}</span>` : "";
         const prioHtml = { high: '<span style="color:#e06c5a">🔺高</span>', medium: '<span style="color:#f2d04a">▪中</span>', low: '<span style="color:#5fbf8f">▫低</span>' }[t.priority||"medium"] || "";
         card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
             <div style="font-weight:bold;font-size:13px;flex:1">${esc(t.title)}</div>${prioHtml}
             <button class="card-act" style="background:none;border:none;color:#b0a080;font-size:13px;cursor:pointer" data-act="menu">☰</button></div>
-          <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((t.assign||[]).join("、") || "待定")}</div>
+          <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((t.assign||[]).join("、") || "待定")}${revHtml}</div>
           <div style="font-size:11px;color:#8a6f52;margin-top:2px;word-break:break-all">工作区：${esc(t.workspace||"")}</div>
           <div style="font-size:11px;margin-top:6px">${statusHtml}</div>
           ${subHtml}
@@ -979,7 +981,7 @@ window.UI = (function () {
     body.appendChild(sec("任务详情"));
     body.innerHTML += `
       <div style="font-size:15px;font-weight:bold;margin-bottom:6px">${esc(t.title)}</div>
-      <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)}${t.stage ? " · " + esc({planning:"计划中",executing:"执行中",polishing:"完善中",retrying:"重试中",revising:"修订中",failed:"失败",done:"已完成"}[t.stage]||t.stage) : ""} · 负责人：${esc((t.assign||[]).join("、")||"待定")}</div>
+      <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)}${t.stage ? " · " + esc({planning:"计划中",executing:"执行中",polishing:"完善中",retrying:"重试中",revising:"修订中",failed:"失败",done:"已完成"}[t.stage]||t.stage) : ""} · 负责人：${esc((t.assign||[]).join("、")||"待定")}${t.feedback && t.feedback.length ? " · 🔄 已修订 " + t.feedback.length + " 次" : ""}</div>
       <div class="section-title">任务描述</div>
       <div style="font-size:12px;white-space:pre-wrap;color:#6e5f50;margin-bottom:8px">${esc(t.desc||"(无描述)")}</div>`;
     // 子任务进度（任务拆解可视化）

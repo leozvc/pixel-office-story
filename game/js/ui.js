@@ -424,6 +424,27 @@ window.UI = (function () {
   }
   function sec(text) { const d = document.createElement("div"); d.className = "section-title"; d.textContent = text; return d; }
 
+  // 点击办公室里的员工：显示该员工的卡片（气泡+面板）
+  function onEmpClick(emp) {
+    if (!emp) return;
+    try {
+      // 场景气泡：员工向老板打招呼
+      if (window.Game && window.Game._showBubble) window.Game._showBubble(emp, "老板好！👋");
+      // 打开团队面板并高亮该员工
+      openPanel("emp");
+      setTimeout(() => {
+        const cards = document.querySelectorAll("#panel-emp .emp-card");
+        for (const c of cards) {
+          if (c.innerText.includes(emp.name || "")) {
+            c.style.borderColor = "#f2d04a";
+            c.style.boxShadow = "0 0 8px rgba(242,208,74,.7)";
+            c.scrollIntoView({ block: "center", behavior: "smooth" });
+          }
+        }
+      }, 120);
+    } catch (e) {}
+  }
+
   // ---------- 任务看板（多列） ----------
   const COLS = [ { id: "todo", name: "待办" }, { id: "doing", name: "执行中" }, { id: "failed", name: "失败" }, { id: "done", name: "已完成" } ];
   let projFilter = ""; // 项目筛选（空 = 全部）
@@ -1029,5 +1050,5 @@ window.UI = (function () {
   }
   function fmt(n) { return Math.round(n).toLocaleString("zh-CN"); }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany };
 })();

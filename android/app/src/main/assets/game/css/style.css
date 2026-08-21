@@ -453,3 +453,18 @@ textarea { width: 100%; background: var(--c-surface3); color: #2f2b26; border: 1
 }
 .sub-progress i.on { background: var(--c-green-br); }
 .sub-progress i.cur { background: var(--c-gold); }
+
+/* ---------- 统计面板（像素方块） ---------- */
+.stat-box {
+  border: 2px solid var(--c-dark2);
+  border-radius: var(--r-2);
+  box-shadow: var(--sh-inset);
+  position: relative;
+  overflow: hidden;
+}
+.stat-box::after {
+  content: "";
+  position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+  background: repeating-linear-gradient(90deg, var(--c-gold) 0 6px, transparent 6px 10px);
+  opacity: .5;
+}

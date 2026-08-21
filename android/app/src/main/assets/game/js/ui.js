@@ -470,10 +470,15 @@ window.UI = (function () {
       const empWork = s.empWork || [];
       if (empWork.length) {
         body.appendChild(sec("员工工作量"));
+        const maxDone = Math.max(1, ...empWork.map(e => e.done || 0));
         for (const e of empWork) {
           const row = document.createElement("div");
-          row.style.cssText = "display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #4a3520";
-          row.innerHTML = `<span>${esc(e.name)}（${esc(e.role||"")}）Lv.${e.level||1}</span><span style="color:#f2d04a">完成 ${e.done||0} 项</span>`;
+          row.style.cssText = "margin-bottom:8px";
+          row.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>${esc(e.name)}（${esc(e.role||"")}）Lv.${e.level||1}</span>
+              <span style="color:#f2d04a">${e.done||0} 项</span>
+            </div>
+            <div class="proj-bar"><div style="width:${Math.round(((e.done||0)/maxDone)*100)}%"></div></div>`;
           body.appendChild(row);
         }
       }

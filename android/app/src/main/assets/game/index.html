@@ -37,6 +37,18 @@
       <span class="typing" style="display:none">正在输入…</span>
     </div>
     <div id="chat-body"></div>
+    <!-- 语音/任务流程可视化：🎤识别 → PM理解 → 派发 → 执行 → 完成 -->
+    <div id="flow-pipe" class="hide">
+      <div class="flow-step" data-step="asr"><span class="fs-ico">🎤</span><span class="fs-lb">识别</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" data-step="pm"><span class="fs-ico">🧠</span><span class="fs-lb">PM理解</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" data-step="dispatch"><span class="fs-ico">📤</span><span class="fs-lb">派发</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" data-step="exec"><span class="fs-ico">⚙️</span><span class="fs-lb">执行</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" data-step="done"><span class="fs-ico">✅</span><span class="fs-lb">完成</span></div>
+    </div>
     <div class="quick-row" id="quick-row"></div>
     <div id="chat-input-wrap">
       <button id="mic-btn" title="语音输入">🎤</button>
@@ -160,6 +172,8 @@
             pmDoneSeen[newlyDone[i].id] = true;
             var t = newlyDone[i];
             UI.addPM("【进度】老板，「" + t.title + "」已完成！产出已写入工作区，可在任务看板查看。");
+            // 流程可视化：若有进行中的流程管道，标记完成
+            try { if (UI.flowStep) UI.flowStep("done", "完成"); } catch (e) {}
           }
         }
       }).catch(function () {}).then(function () { UI.syncing = false; });

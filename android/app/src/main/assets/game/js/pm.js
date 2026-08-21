@@ -34,7 +34,8 @@ window.PM = (function () {
   function emojiOf(role) { return { dev: "👨‍💻", art: "🎨", qa: "🧪", ops: "📣" }[role] || "👤"; }
 
   // 主入口：老板发消息 → PM（LLM）理解并调度
-  async function respond(text) {
+  async function respond(text, opts) {
+    const flow = (opts && opts.flow) || null; // 可选流程可视化回调 flow(stepName, label)
     if (!window.Bridge || !Bridge.isConfigured()) {
       return Promise.resolve("老板，本版本需要连接 DeepSeek harness 才能工作。请点右上角 ⚡ 打开「连接」面板，填入 DSH 任务编排服务地址并配对。配对成功后，我才能调度员工 agent 为你工作。");
     }
@@ -48,16 +49,19 @@ window.PM = (function () {
       const action = parseAction(content);
       const reply = stripAction(content);
       if (action && action.action && action.action !== "none") {
-        executeAction(action).catch(e => console.error("[PM action]", e));
+        executeAction(action, flow).catch(e => console.error("[PM action]", e));
         setTimeout(() => syncFromBridge().catch(() => {}), 300);
       }
       pushHistory("boss", text);
       pushHistory("pm", reply);
+      if (flow) flow("done", "完成");
       return reply;
     } catch (e) {
+      if (flow) flowResetSafe();
       return "（连接出现问题：" + (e.message || "未知错误") + "）";
     }
   }
+  function flowResetSafe() { try { UI.flowReset(); } catch (e) {} }
 
   function parseAction(content) {
     const m = content.match(/\{[\s\S]*"action"[\s\S]*?\}/);
@@ -69,16 +73,19 @@ window.PM = (function () {
   }
 
   // 执行 PM 动作：hire / create_task / report
-  async function executeAction(a) {
+  async function executeAction(a, flow) {
     switch (a.action) {
       case "hire": {
         const role = a.role || "dev";
         const name = a.name || (roleNameOf(role) + "-" + Math.floor(Math.random() * 900 + 100));
+        if (flow) flow("dispatch", "招聘中");
         S.notify("正在雇佣 " + roleNameOf(role), "「" + name + "」正在加入…", { icon: "users", type: "hire" });
         try {
           const d = await Bridge.hireEmployee(name, role);
           S.notify("新员工入职！", (d.employee && d.employee.name) + " 已加入公司", { icon: "users", type: "hire" });
+          if (flow) flow("exec", "入职办理");
           await syncFromBridge().catch(() => {});
+          if (flow) flow("done", "入职完成");
         } catch (e) { S.notify("招聘失败", e.message, { icon: "excl", type: "error" }); }
         break;
       }
@@ -87,13 +94,17 @@ window.PM = (function () {
         const desc = a.desc || "";
         const assign = Array.isArray(a.assign) ? a.assign : [];
         const workspace = a.workspace || ""; // 可选，默认服务端分配
+        if (flow) flow("dispatch", "派发中");
         S.notify("派发任务", "「" + title + "」分配给 " + (assign.join("、") || "待定") + "，已加入任务看板", { icon: "flag", type: "task", important: true });
         try {
           const d = await Bridge.createTask(title, desc, assign, workspace);
           if (d.task) {
             // 自动派发执行
+            if (flow) flow("exec", "员工执行中");
             await Bridge.dispatchTask(d.task.id).catch(() => {});
             S.notify("任务已派发", "「" + title + "」已交员工执行，产出将写入工作区", { icon: "flag", type: "task" });
+            // 让对应员工在办公室场景冒泡
+            sceneEmpBubble(assign, "收到！开工！💪");
           }
           await syncFromBridge().catch(() => {});
         } catch (e) { S.notify("派发失败", e.message, { icon: "excl", type: "error" }); }
@@ -119,6 +130,18 @@ window.PM = (function () {
       }
       default: break;
     }
+  }
+
+  // 让指定名字的员工在办公室场景冒气泡
+  function sceneEmpBubble(names, text) {
+    try {
+      if (!window.Game || !window.Game._showBubble) return;
+      const Ss = S.get();
+      for (const nm of (names || [])) {
+        const emp = Ss.employees.find(e => e.name === nm);
+        if (emp) window.Game._showBubble(emp, text);
+      }
+    } catch (e) {}
   }
 
   let history = [];

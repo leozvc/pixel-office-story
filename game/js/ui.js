@@ -63,8 +63,9 @@ window.UI = (function () {
     const v = el.chatInput.value.trim();
     if (!v) return;
     addBoss(v); el.chatInput.value = ""; showTyping();
-    Promise.resolve(PM.respond(v)).then(reply => { hideTyping(); addPM(reply); afterReply(); })
-      .catch(e => { hideTyping(); addPM("（出错了… " + (e && e.message ? e.message : "未知错误") + "）"); afterReply(); });
+    flowStep("pm", "PM理解中");
+    Promise.resolve(PM.respond(v, { flow: flowStep })).then(reply => { hideTyping(); addPM(reply); afterReply(); })
+      .catch(e => { hideTyping(); addPM("（出错了… " + (e && e.message ? e.message : "未知错误") + "）"); flowReset(); afterReply(); });
   }
   function afterReply() { renderHUD(); renderBadge(); SFX.play("msg"); }
   function addBoss(text) {
@@ -103,20 +104,54 @@ window.UI = (function () {
         try { stream.getTracks().forEach(t => t.stop()); } catch (e) {}
         const blob = new Blob(audioChunks, { type: "audio/webm" });
         el.mic.textContent = "⏳"; addSys("（语音识别中…）");
+        flowShow(); flowStep("asr", "识别中");
         try {
           const text = await Bridge.transcribeAudio(blob);
           if (text) {
+            flowStep("pm", "PM理解中");
             addBoss("🎤 " + text); el.chatInput.value = text; showTyping();
-            const reply = await PM.respond(text);
+            const reply = await PM.respond(text, { flow: flowStep });
             hideTyping(); addPM(reply); afterReply();
-          } else { el.mic.textContent = "🎤"; addSys("（没有识别到语音，请重试）"); }
-        } catch (e) { el.mic.textContent = "🎤"; addSys("（语音识别失败：" + (e.message || "未知错误") + "）"); }
+          } else { el.mic.textContent = "🎤"; addSys("（没有识别到语音，请重试）"); flowReset(); }
+        } catch (e) { el.mic.textContent = "🎤"; addSys("（语音识别失败：" + (e.message || "未知错误") + "）"); flowReset(); }
         el.mic.textContent = "🎤";
       };
       mediaRecorder.start(); recording = true; el.mic.textContent = "🔴"; addSys("（录音中…再次点击结束）");
     } catch (e) { addSys("（无法使用麦克风：" + (e.message || "权限被拒") + "）"); }
   }
   function stopVoice() { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); recording = false; }
+
+  // ---------- 语音/任务流程可视化 ----------
+  // 阶段：asr(识别) → pm(PM理解) → dispatch(派发) → exec(执行) → done(完成)
+  // show 阶段时把它点亮并滚动到聊天区可看到；超过 1 阶段后旧阶段自动置 done
+  function flowShow() {
+    const pipe = $("flow-pipe");
+    if (pipe) pipe.classList.remove("hide");
+  }
+  function flowHide() {
+    const pipe = $("flow-pipe");
+    if (pipe) pipe.classList.add("hide");
+  }
+  function flowStep(name, label) {
+    flowShow();
+    const pipe = $("flow-pipe");
+    if (!pipe) return;
+    const steps = ["asr", "pm", "dispatch", "exec", "done"];
+    const idx = steps.indexOf(name);
+    pipe.querySelectorAll(".flow-step").forEach((s, i) => {
+      s.classList.remove("on", "done");
+      if (idx >= 0 && i < idx) s.classList.add("done");
+      if (i === idx) { s.classList.add("on"); if (label) s.querySelector(".fs-lb").textContent = label; }
+    });
+    scrollChat();
+  }
+  function flowReset() {
+    const pipe = $("flow-pipe");
+    if (pipe) {
+      pipe.querySelectorAll(".flow-step").forEach(s => s.classList.remove("on", "done"));
+      pipe.classList.add("hide");
+    }
+  }
 
   function renderHUD() {
     const Ss = S.get();
@@ -639,5 +674,5 @@ window.UI = (function () {
   }
   function fmt(n) { return Math.round(n).toLocaleString("zh-CN"); }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, flowShow, flowHide, flowStep, flowReset };
 })();

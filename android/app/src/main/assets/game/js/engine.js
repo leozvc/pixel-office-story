@@ -114,7 +114,8 @@ window.Game = (function () {
     g.globalAlpha = 1;
     drawEmployees();
     for (const tb of talking) {
-      const idx = S.get().employees.indexOf(tb.emp);
+      const emps = S.get().employees;
+      const idx = emps.findIndex(e => e.id === (tb.emp && tb.emp.id));
       if (idx < 0) continue;
       const st = stationPos(idx);
       drawBubble(st.x, st.y - 46, tb.text);

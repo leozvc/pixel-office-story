@@ -116,6 +116,26 @@ canvas { image-rendering: pixelated; }
   display: flex; flex-direction: column; gap: 8px;
   scroll-behavior: smooth;
 }
+
+/* 语音/任务流程可视化管道 */
+#flow-pipe {
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  padding: 4px 6px; margin: 0 8px 4px;
+  background: #2f2418; border: 1px solid #1a120a; border-radius: 5px;
+  flex-wrap: wrap;
+}
+#flow-pipe.hide { display: none; }
+#flow-pipe .flow-step {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; color: #8a7a5f;
+  padding: 2px 6px; border-radius: 3px;
+  background: #3a2a1a; border: 1px solid #2a1d10;
+  transition: all .25s;
+}
+#flow-pipe .flow-step.on { background: #d94f2b; border-color: #ff8a5a; color: #fff; box-shadow: 0 0 6px rgba(217,79,43,.6); }
+#flow-pipe .flow-step.done { background: #2a6a4f; border-color: #5fbf8f; color: #cfe8da; }
+#flow-pipe .flow-arrow { color: #8a7a5f; font-size: 11px; }
+#flow-pipe .flow-step .fs-ico { font-size: 11px; }
 .msg { display: flex; gap: 8px; max-width: 92%; animation: msgIn .18s; }
 @keyframes msgIn { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
 .msg .avatar {

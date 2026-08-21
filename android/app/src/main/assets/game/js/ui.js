@@ -455,9 +455,12 @@ window.UI = (function () {
     const projBtn = document.createElement("button");
     projBtn.className = "btn gray"; projBtn.textContent = "📁 项目";
     projBtn.addEventListener("click", renderProjects);
+    const dashBtn = document.createElement("button");
+    dashBtn.className = "btn green"; dashBtn.textContent = "🏢 总览";
+    dashBtn.addEventListener("click", renderDashboard);
     const btnWrap = document.createElement("div");
     btnWrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
-    btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(projBtn); btnWrap.appendChild(addBtn);
+    btnWrap.appendChild(dashBtn); btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(projBtn); btnWrap.appendChild(addBtn);
     top.appendChild(cnt); top.appendChild(btnWrap);
     body.appendChild(top);
 
@@ -764,7 +767,64 @@ window.UI = (function () {
     body.appendChild(back);
   }
 
-  // ---------- 新建任务 ----------
+  // ---------- 公司总览看板（mission control） ----------
+  async function renderDashboard() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("🏢 公司总览"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">加载中…</div>';
+    try {
+      const [dash, comp, proj] = await Promise.all([Bridge.getEconomy(), Bridge.getCompany(), Bridge.listProjects()]);
+      const eco = dash.economy || {};
+      const co = comp.company || {};
+      const projects = proj.projects || [];
+      const funds = eco.funds || 0;
+      const Ss = S.get();
+      body.innerHTML = "";
+      body.appendChild(sec("🏢 公司总览"));
+      // 公司等级 + 资金
+      body.innerHTML += `<div style="display:flex;gap:8px;margin-bottom:8px">
+        <div style="flex:1;background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#b0a080">${esc(co.emoji||"🏠")} 公司等级</div>
+          <div style="font-size:18px;color:#f2d04a;font-weight:bold">${esc(co.name||"—")} Lv.${co.level||1}</div>
+        </div>
+        <div style="flex:1;background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#b0a080">💰 公司资金</div>
+          <div style="font-size:18px;color:#9fe8cf;font-weight:bold">${fmt(funds)}</div>
+        </div>
+      </div>`;
+      // 任务/员工概览
+      body.innerHTML += `<div style="display:flex;gap:8px;margin-bottom:8px">
+        <div style="flex:1;background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:20px;color:#9fe8cf;font-weight:bold">${Ss.tasks.length||0}</div><div style="font-size:10px;color:#b0a080">总任务</div></div>
+        <div style="flex:1;background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:20px;color:#5fbf8f;font-weight:bold">${Ss.employees.length||0}</div><div style="font-size:10px;color:#b0a080">员工数</div></div>
+        <div style="flex:1;background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:20px;color:#f2d04a;font-weight:bold">${projects.length||0}</div><div style="font-size:10px;color:#b0a080">项目数</div></div>
+      </div>`;
+      // 项目进度
+      body.appendChild(sec("项目进度"));
+      if (!projects.length) body.innerHTML += '<div class="notif-empty">暂无项目</div>';
+      for (const p of projects.slice(0, 5)) {
+        body.innerHTML += `<div style="font-size:12px;margin-bottom:5px">
+          <div style="display:flex;justify-content:space-between;color:#6e5f50"><span>${esc(p.name)}</span><span style="color:${p.pct>=100?"#3d8b6f":"#f2d04a"}">${p.pct}% (${p.done}/${p.total})</span></div>
+          <div class="proj-bar"><div style="width:${p.pct}%"></div></div></div>`;
+      }
+      // 最近完成任务
+      body.appendChild(sec("最近完成"));
+      const recent = Ss.tasks.filter(t => t.status === "done").slice(-5).reverse();
+      if (!recent.length) body.innerHTML += '<div class="notif-empty">暂无完成任务</div>';
+      for (const t of recent) {
+        body.innerHTML += `<div style="font-size:12px;color:#6e5f50;padding:3px 0;border-bottom:1px dashed #d8c9a3">✅ ${esc(t.title)} <span style="color:#b0a090;font-size:10px">${esc((t.assign||[]).join("、")||"")}</span></div>`;
+      }
+    } catch (e) { body.innerHTML += '<div class="notif-empty">加载失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
   function openTaskNew() {
     if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接任务编排服务。"); return; }
     openPanel("tasknew");

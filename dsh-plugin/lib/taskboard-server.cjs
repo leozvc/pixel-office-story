@@ -243,6 +243,26 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true });
       return;
     }
+    // 任务归档（从当前看板移出，保留到归档历史）
+    if (req.method === "POST" && pathname === "/v1/tasks/archive") {
+      const b = await C.readBody(req);
+      const k = C.loadKanban();
+      const idx = k.tasks.findIndex(x => x.id === b.id);
+      if (idx < 0) { C.json(res, 404, { ok: false, error: "task not found" }); return; }
+      const t = k.tasks.splice(idx, 1)[0];
+      t.archivedAt = Date.now();
+      if (!k.archived) k.archived = [];
+      k.archived.unshift(t);
+      C.saveKanban(k);
+      C.json(res, 200, { ok: true, archived: true });
+      return;
+    }
+    // 归档历史列表
+    if (req.method === "GET" && pathname === "/v1/tasks/archived") {
+      const k = C.loadKanban();
+      C.json(res, 200, { ok: true, archived: (k.archived || []).map(t => ({ id: t.id, title: t.title, assign: t.assign || [], status: t.status, output: t.output || "", archivedAt: t.archivedAt, workspace: t.workspace })) });
+      return;
+    }
     // 数据统计
     if (req.method === "GET" && pathname === "/v1/stats") {
       const k = C.loadKanban();

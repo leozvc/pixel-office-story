@@ -83,6 +83,8 @@ window.Bridge = (function () {
   async function setTaskPriority(id, priority) { return await req("/v1/tasks/status", "POST", { id, priority }, settings.token); }
   async function cancelTask(id) { return await req("/v1/tasks/status", "POST", { id, cancel: true }, settings.token); }
   async function deleteTask(id) { return await req("/v1/tasks/delete", "POST", { id }, settings.token); }
+  async function archiveTask(id) { return await req("/v1/tasks/archive", "POST", { id }, settings.token); }
+  async function listArchived() { return await req("/v1/tasks/archived", "GET", null, settings.token); }
   async function listWorkspace(id) { return await req("/v1/tasks/" + id + "/workspace", "GET", null, settings.token); }
   // 公司长期记忆
   async function getMemory() { return await req("/v1/memory", "GET", null, settings.token); }
@@ -129,7 +131,7 @@ window.Bridge = (function () {
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
-    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, listWorkspace, getMemory, getStats,
+    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, listArchived, listWorkspace, getMemory, getStats,
     pmChat, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };

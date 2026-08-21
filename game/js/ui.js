@@ -321,9 +321,12 @@ window.UI = (function () {
     const statsBtn = document.createElement("button");
     statsBtn.className = "btn blue"; statsBtn.textContent = "📊 统计";
     statsBtn.addEventListener("click", renderStats);
+    const archBtn = document.createElement("button");
+    archBtn.className = "btn gray"; archBtn.textContent = "🗄 归档";
+    archBtn.addEventListener("click", renderArchived);
     const btnWrap = document.createElement("div");
     btnWrap.style.cssText = "display:flex;gap:6px";
-    btnWrap.appendChild(statsBtn); btnWrap.appendChild(addBtn);
+    btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(addBtn);
     top.appendChild(cnt); top.appendChild(btnWrap);
     body.appendChild(top);
 
@@ -362,6 +365,7 @@ window.UI = (function () {
             <button class="btn gray" data-act="cancel" data-id="${t.id}" style="width:100%;margin:2px 0">移到待办</button>
             <button class="btn gray" data-act="priority" data-id="${t.id}" data-p="high" style="width:100%;margin:2px 0">设为高优先级</button>
             <button class="btn gray" data-act="priority" data-id="${t.id}" data-p="low" style="width:100%;margin:2px 0">设为低优先级</button>
+            <button class="btn gray" data-act="archive" data-id="${t.id}" style="width:100%;margin:2px 0">归档</button>
             <button class="btn gray" data-act="delete" data-id="${t.id}" style="width:100%;margin:2px 0;color:#e06c5a">删除任务</button>
           </div>`;
         card.addEventListener("click", (e) => { if (!e.target.closest(".card-act") && !e.target.closest(".card-menu")) openTaskDetail(t.id); });
@@ -374,6 +378,7 @@ window.UI = (function () {
           if (act.dataset.act === "redispatch") { Bridge.dispatchTask(id).then(() => { S.notify("已安排执行", "", { type: "task" }); return PM.syncFromBridge(); }).catch(()=>{}); }
           else if (act.dataset.act === "cancel") { Bridge.cancelTask(id).then(() => PM.syncFromBridge()).catch(()=>{}); }
           else if (act.dataset.act === "priority") { Bridge.setTaskPriority(id, act.dataset.p).then(() => PM.syncFromBridge()).catch(()=>{}); }
+          else if (act.dataset.act === "archive") { if (confirm("归档此任务？")) Bridge.archiveTask(id).then(() => PM.syncFromBridge()).catch(()=>{}); }
           else if (act.dataset.act === "delete") { if (confirm("删除任务？")) Bridge.deleteTask(id).then(() => PM.syncFromBridge()).catch(()=>{}); }
         });
         colDiv.appendChild(card);
@@ -416,6 +421,37 @@ window.UI = (function () {
         }
       }
     } catch (e) { body.innerHTML += '<div class="notif-empty">统计失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
+
+  // ---------- 归档历史 ----------
+  async function renderArchived() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("🗄 归档历史"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">加载中…</div>';
+    try {
+      const d = await Bridge.listArchived();
+      const arch = d.archived || [];
+      body.innerHTML = "";
+      body.appendChild(sec("🗄 归档历史（" + arch.length + "）"));
+      if (!arch.length) { body.innerHTML += '<div class="notif-empty">暂无归档任务</div>'; }
+      for (const a of arch) {
+        const card = document.createElement("div");
+        card.className = "task-card";
+        card.style.cssText = "background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:8px;margin-bottom:8px";
+        card.innerHTML = `<div style="font-weight:bold;font-size:13px">${esc(a.title)}</div>
+          <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((a.assign||[]).join("、") || "待定")} · 归档于 ${new Date(a.archivedAt||Date.now()).toLocaleDateString()}</div>
+          <div style="font-size:11px;color:#8a6f52;margin-top:4px;word-break:break-all">工作区：${esc(a.workspace||"")}</div>
+          ${a.output ? '<div style="font-size:11px;color:#6e5f50;margin-top:4px;max-height:60px;overflow:hidden;white-space:pre-wrap">' + esc(a.output.slice(0,150)) + '</div>' : ""}`;
+        body.appendChild(card);
+      }
+    } catch (e) { body.innerHTML += '<div class="notif-empty">读取失败：' + esc(e.message||"") + "</div>"; }
     const back = document.createElement("button");
     back.className = "btn gray"; back.textContent = "← 返回看板";
     back.style.cssText = "margin-top:12px;width:100%";

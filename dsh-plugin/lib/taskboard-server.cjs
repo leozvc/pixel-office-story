@@ -207,6 +207,11 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true, economy: C.economyView() });
       return;
     }
+    // 公司等级/里程碑视图
+    if (req.method === "GET" && pathname === "/v1/company") {
+      C.json(res, 200, { ok: true, company: C.companyView() });
+      return;
+    }
     // 公司长期记忆（供游戏/调试查看）
     if (req.method === "GET" && pathname === "/v1/memory") {
       C.json(res, 200, { ok: true, memory: C.loadMemory(), summary: C.buildMemorySummary() });

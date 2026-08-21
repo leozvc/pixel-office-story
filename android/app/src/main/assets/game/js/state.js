@@ -17,6 +17,7 @@ window.GState = (function () {
       lastSync: 0,
       funds: null,        // 公司资金
       economy: null,      // 经济视图 { funds, ledger, hireCost, reward }
+      company: null,      // 公司等级视图 { level, name, emoji, doneTasks, ... }
     };
   }
 

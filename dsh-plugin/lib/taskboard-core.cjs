@@ -339,4 +339,28 @@ function economyView() {
   return { funds: e.funds || START_FUNDS, ledger: e.ledger.slice(0, 30), hireCost: HIRE_COST, reward: REWARD };
 }
 
-module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, server: undefined };
+// ---------- 公司等级/里程碑 ----------
+// 根据已完成任务数与资金判断公司发展阶段
+const COMPANY_TIERS = [
+  { level: 1, minTasks: 0,   minFunds: 0,    name: "个人工作室", emoji: "🏠" },
+  { level: 2, minTasks: 10,  minFunds: 8000, name: "株式会社",   emoji: "🏢" },
+  { level: 3, minTasks: 25,  minFunds: 20000, name: "控股集团",  emoji: "🏙️" },
+  { level: 4, minTasks: 50,  minFunds: 50000, name: "上市集团",  emoji: "🏆" },
+];
+function companyView() {
+  const k = loadKanban();
+  const done = k.tasks.filter(t => t.status === "done").length;
+  const total = k.tasks.length;
+  const e = loadEconomy();
+  const funds = e.funds || START_FUNDS;
+  let tier = COMPANY_TIERS[0];
+  let next = null;
+  for (const t of COMPANY_TIERS) {
+    if (done >= t.minTasks && funds >= t.minFunds) { tier = t; }
+  }
+  const nextIdx = COMPANY_TIERS.findIndex(t => t.level === tier.level) + 1;
+  if (nextIdx < COMPANY_TIERS.length) next = COMPANY_TIERS[nextIdx];
+  return { level: tier.level, name: tier.name, emoji: tier.emoji, doneTasks: done, totalTasks: total, funds, next, nextProgress: next ? { tasksPct: Math.min(100, Math.round(done / next.minTasks * 100)), fundsPct: Math.min(100, Math.round(funds / next.minFunds * 100)) } : null };
+}
+
+module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, companyView, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, server: undefined };

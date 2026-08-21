@@ -53,6 +53,7 @@ window.UI = (function () {
     if (window.Bridge && Bridge.isConfigured() && window.PM) {
       PM.syncFromBridge().catch(() => {});
       refreshFunds().catch(() => {});
+      refreshCompany().catch(() => {});
       startNotifPolling();
     }
   }
@@ -173,6 +174,8 @@ window.UI = (function () {
     if (tasksBtn) tasksBtn.textContent = "📋 " + Ss.tasks.length;
     const fundsBtn = $("hud-funds");
     if (fundsBtn) fundsBtn.textContent = "💰 " + (Ss.funds != null ? fmt(Ss.funds) : "…");
+    const titleBtn = $("hud-title");
+    if (titleBtn) titleBtn.textContent = (Ss.company ? (Ss.company.emoji + " " + Ss.company.name) : "🏠 像素软件株式会社") + (Ss.company ? " Lv." + Ss.company.level : "");
   }
   // 拉取公司资金刷新 HUD
   async function refreshFunds() {
@@ -182,6 +185,17 @@ window.UI = (function () {
       if (d && d.economy && d.economy.funds != null) {
         S.get().funds = d.economy.funds;
         S.get().economy = d.economy;
+        S.save(); S.emit();
+      }
+    } catch (e) {}
+  }
+  // 拉取公司等级刷新 HUD
+  async function refreshCompany() {
+    if (!window.Bridge || !Bridge.isConfigured()) return;
+    try {
+      const d = await Bridge.getCompany();
+      if (d && d.company) {
+        S.get().company = d.company;
         S.save(); S.emit();
       }
     } catch (e) {}
@@ -624,6 +638,17 @@ window.UI = (function () {
       const funds = eco.funds || 0;
       body.innerHTML = "";
       body.appendChild(sec("💰 公司财务"));
+      // 公司等级卡（里程碑）
+      try {
+        const cd = await Bridge.getCompany();
+        const co = cd.company || {};
+        body.innerHTML += `<div style="background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:12px;margin-bottom:10px;text-align:center">
+          <div style="font-size:13px;color:#f2e6cf">${esc(co.emoji || "🏠")} <b>${esc(co.name || "像素软件株式会社")}</b> <span style="color:#f2d04a">Lv.${co.level || 1}</span></div>
+          <div style="font-size:11px;color:#b0a080;margin-top:4px">已完成 ${co.doneTasks || 0} 项任务</div>
+          ${co.next ? `<div style="font-size:11px;color:#8a6f52;margin-top:6px">下一阶段：${esc(co.next.emoji)} ${esc(co.next.name)}（任务 ${co.doneTasks}/${co.next.minTasks} · 资金 ${fmt(co.funds||0)}/${fmt(co.next.minFunds)}）</div>
+          <div class="proj-bar" style="margin-top:4px"><div style="width:${Math.max(0, Math.min(100, (co.nextProgress ? co.nextProgress.tasksPct : 0)))}%"></div></div>` : '<div style="font-size:11px;color:#5fbf8f;margin-top:6px">🏆 已达成最高等级！</div>'}
+        </div>`;
+      } catch (e) {}
       // 资金大数字
       body.innerHTML += `<div style="background:#4a3520;border:2px solid #1a120a;border-radius:6px;padding:14px;text-align:center;margin-bottom:10px">
         <div style="font-size:12px;color:#b0a080">公司资金</div>
@@ -900,5 +925,5 @@ window.UI = (function () {
   }
   function fmt(n) { return Math.round(n).toLocaleString("zh-CN"); }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, flowShow, flowHide, flowStep, flowReset, refreshFunds };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany };
 })();

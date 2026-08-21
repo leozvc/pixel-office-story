@@ -548,10 +548,30 @@ window.UI = (function () {
       <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)}${t.stage ? " · " + esc({planning:"计划中",executing:"执行中",polishing:"完善中",retrying:"重试中",failed:"失败",done:"已完成"}[t.stage]||t.stage) : ""} · 负责人：${esc((t.assign||[]).join("、")||"待定")}</div>
       <div class="section-title">任务描述</div>
       <div style="font-size:12px;white-space:pre-wrap;color:#6e5f50;margin-bottom:8px">${esc(t.desc||"(无描述)")}</div>
-      <div class="section-title">工作区目录</div>
-      <div style="font-size:12px;word-break:break-all;color:#3f6fae;margin-bottom:8px">${esc(t.workspace||"")}</div>
       <div class="section-title">员工产出</div>
-      <div style="font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:8px;border-radius:4px;max-height:180px;overflow-y:auto;margin-bottom:8px">${esc(t.output||"(尚未产出)")}</div>`;
+      <div style="font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:8px;border-radius:4px;max-height:180px;overflow-y:auto;margin-bottom:8px">${esc(t.output||"(尚未产出)")}</div>
+      <div class="section-title">工作区文件</div>
+      <div id="ws-files" style="font-size:12px;color:#8a6f52;margin-bottom:8px">加载中…</div>`;
+    // 异步加载工作区文件列表
+    if (window.Bridge && Bridge.isConfigured() && t.workspace) {
+      Bridge.listWorkspace(t.id).then(d => {
+        const wf = $("ws-files");
+        if (!wf) return;
+        const files = d.files || [];
+        if (!files.length) { wf.textContent = "（工作区暂无文件）"; return; }
+        wf.innerHTML = "";
+        for (const f of files) {
+          if (f.dir) { wf.innerHTML += '<div style="color:#b0a080">📁 ' + esc(f.name) + "/</div>"; continue; }
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:6px;padding:4px 6px;margin-bottom:4px;background:#4a3520;border:1px solid #1a120a;border-radius:4px;cursor:pointer";
+          row.innerHTML = '<span style="color:#cfe0ff;word-break:break-all">📄 ' + esc(f.name) + '</span><span style="color:#5fbf8f;font-size:11px;flex-shrink:0">查看</span>';
+          row.addEventListener("click", () => viewWorkspaceFile(t.id, f.name));
+          wf.appendChild(row);
+        }
+      }).catch(() => { const wf = $("ws-files"); if (wf) wf.textContent = "（加载失败）"; });
+    } else {
+      const wf = $("ws-files"); if (wf) wf.textContent = "（未连接或未分配工作区）";
+    }
     const btn = document.createElement("button");
     btn.className = "btn " + (t.status === "done" ? "gray" : "green");
     btn.textContent = t.status === "done" ? "重新执行" : (t.status === "failed" ? "重试" : "立即执行");
@@ -562,6 +582,32 @@ window.UI = (function () {
       } catch (e) { addPM("执行失败：" + (e.message||"")); }
     });
     body.appendChild(btn);
+  }
+
+  // 查看工作区文件内容
+  async function viewWorkspaceFile(id, name) {
+    const body = $("panel-taskdetail").querySelector(".panel-body");
+    const t = S.get().tasks.find(x => x.id === id);
+    if (!t) return;
+    body.innerHTML = "";
+    body.appendChild(sec("📄 " + name));
+    body.innerHTML += '<div style="font-size:12px;color:#8a6f52;margin-bottom:8px">' + esc(t.title) + " · " + esc(name) + "</div>";
+    body.innerHTML += '<div style="font-size:12px;color:#8a6f52" id="ws-file-loading">加载中…</div>';
+    try {
+      const d = await Bridge.readWorkspaceFile(id, name);
+      const pre = document.createElement("pre");
+      pre.style.cssText = "font-size:11px;white-space:pre-wrap;word-break:break-all;color:#333;background:#f4f1ea;padding:10px;border-radius:4px;max-height:340px;overflow-y:auto;line-height:1.5";
+      pre.textContent = d.content || "(空文件)";
+      body.querySelector("#ws-file-loading").replaceWith(pre);
+      if (d.truncated) body.innerHTML += '<div style="font-size:11px;color:#e06c5a;margin-top:6px">⚠ 文件较大，已截断显示</div>';
+    } catch (e) {
+      const ld = $("ws-file-loading"); if (ld) ld.textContent = "读取失败：" + (e.message||"");
+    }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回任务详情";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderTaskDetail);
+    body.appendChild(back);
   }
 
   function renderNotif() {

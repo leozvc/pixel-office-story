@@ -297,6 +297,25 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true, workspace: t.workspace, files });
       return;
     }
+    // 读取任务工作区内的单个文件内容（带路径穿越防护，只允许访问本任务工作区内）
+    if (req.method === "GET" && pathname.startsWith("/v1/tasks/") && pathname.endsWith("/file")) {
+      const id = pathname.slice("/v1/tasks/".length, -"/file".length);
+      const k = C.loadKanban();
+      const t = k.tasks.find(x => x.id === id);
+      if (!t) { C.json(res, 404, { ok: false, error: "not found" }); return; }
+      const name = url.searchParams.get("name") || "";
+      if (!name) { C.json(res, 400, { ok: false, error: "name required" }); return; }
+      const base = path.resolve(t.workspace);
+      const target = path.resolve(path.join(base, name));
+      if (target !== base && !target.startsWith(base + path.sep)) { C.json(res, 403, { ok: false, error: "forbidden path" }); return; }
+      try {
+        const st = fs.statSync(target);
+        if (st.isDirectory()) { C.json(res, 200, { ok: true, dir: true, name }); return; }
+        if (st.size > 512 * 1024) { C.json(res, 200, { ok: true, name, truncated: true, content: fs.readFileSync(target, "utf8").slice(0, 512 * 1024) }); return; }
+        C.json(res, 200, { ok: true, name, content: fs.readFileSync(target, "utf8") });
+      } catch (e) { C.json(res, 404, { ok: false, error: "cannot read: " + e.message }); }
+      return;
+    }
 
     // ---- PM 快问快答 ----
     if (req.method === "POST" && pathname === "/v1/pm/chat") {

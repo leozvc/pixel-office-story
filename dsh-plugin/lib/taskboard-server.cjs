@@ -106,9 +106,13 @@ async function dispatchTask(task, opts) {
         C.saveKanban(k);
       }
     }
-    // 复位员工状态
-    for (const e of assignees) e.status = "idle";
-    C.saveEmployees(C.loadEmployees());
+    // 复位员工状态（只复位本任务涉及的员工，保留并发任务的 working 状态）
+    const curEs = C.loadEmployees();
+    for (const e of assignees) {
+      const cur = curEs.find(x => x.id === e.id);
+      if (cur) cur.status = "idle";
+    }
+    C.saveEmployees(curEs);
   } finally {
     dispatching.delete(task.id);
   }

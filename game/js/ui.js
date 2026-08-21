@@ -655,6 +655,14 @@ window.UI = (function () {
       const content = d.content || "(无内容)";
       body.innerHTML = "";
       body.appendChild(sec("📋 项目周报"));
+      // 复制按钮（分享/导出）
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "btn gray"; copyBtn.textContent = "📋 复制";
+      copyBtn.style.cssText = "width:100%;margin-bottom:8px";
+      copyBtn.addEventListener("click", async () => {
+        const ok = await copyText(content); copyBtn.textContent = ok ? "✅ 已复制" : "复制失败"; if (ok) setTimeout(() => { copyBtn.textContent = "📋 复制"; }, 1500);
+      });
+      body.appendChild(copyBtn);
       const pre = document.createElement("div");
       pre.style.cssText = "font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:10px;border-radius:4px;line-height:1.6";
       pre.textContent = content;
@@ -680,6 +688,13 @@ window.UI = (function () {
       const content = d.content || "(无内容)";
       body.innerHTML = "";
       body.appendChild(sec("💡 PM 行动建议"));
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "btn gray"; copyBtn.textContent = "📋 复制";
+      copyBtn.style.cssText = "width:100%;margin-bottom:8px";
+      copyBtn.addEventListener("click", async () => {
+        const ok = await copyText(content); copyBtn.textContent = ok ? "✅ 已复制" : "复制失败"; if (ok) setTimeout(() => { copyBtn.textContent = "📋 复制"; }, 1500);
+      });
+      body.appendChild(copyBtn);
       const pre = document.createElement("div");
       pre.style.cssText = "font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:10px;border-radius:4px;line-height:1.6";
       pre.textContent = content;
@@ -1049,6 +1064,22 @@ window.UI = (function () {
     return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
   function fmt(n) { return Math.round(n).toLocaleString("zh-CN"); }
+  // 复制文本（WebView 兼容：优先 Clipboard API，回退 textarea+execCommand）
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; }
+    } catch (e) {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand && document.execCommand("copy");
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch (e) { return false; }
+  }
 
   return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany };
 })();

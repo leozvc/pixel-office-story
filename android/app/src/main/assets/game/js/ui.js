@@ -397,6 +397,8 @@ window.UI = (function () {
           : t.status === "failed" ? '<span style="color:#e06c5a">❌ 失败</span>'
           : t.status === "doing" ? '<span style="color:#f2d04a">⏳ ' + esc(stageTxt||"执行中") + '</span>'
           : '<span style="color:#cfe0ff">待办</span>';
+        // 子任务进度（若存在）
+        const subHtml = (t.subtasks && t.subtasks.length) ? `<div style="font-size:10px;color:#b0a080;margin-top:4px">子任务 ${t.subtasks.filter(s=>s.done).length}/${t.subtasks.length}：${esc(t.currentSubtask||"")}</div>` : "";
         const prioHtml = { high: '<span style="color:#e06c5a">🔺高</span>', medium: '<span style="color:#f2d04a">▪中</span>', low: '<span style="color:#5fbf8f">▫低</span>' }[t.priority||"medium"] || "";
         card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
             <div style="font-weight:bold;font-size:13px;flex:1">${esc(t.title)}</div>${prioHtml}
@@ -404,6 +406,7 @@ window.UI = (function () {
           <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((t.assign||[]).join("、") || "待定")}</div>
           <div style="font-size:11px;color:#8a6f52;margin-top:2px;word-break:break-all">工作区：${esc(t.workspace||"")}</div>
           <div style="font-size:11px;margin-top:6px">${statusHtml}</div>
+          ${subHtml}
           <div class="card-menu" data-menu="${t.id}" style="display:none;margin-top:6px;background:#3a2a1a;border:1px solid #1a120a;border-radius:4px;padding:4px">
             <button class="btn blue" data-act="redispatch" data-id="${t.id}" style="width:100%;margin:2px 0">${t.status === "done" ? "重新执行" : "重新执行"}</button>
             <button class="btn gray" data-act="cancel" data-id="${t.id}" style="width:100%;margin:2px 0">移到待办</button>
@@ -588,7 +591,19 @@ window.UI = (function () {
       <div style="font-size:15px;font-weight:bold;margin-bottom:6px">${esc(t.title)}</div>
       <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)}${t.stage ? " · " + esc({planning:"计划中",executing:"执行中",polishing:"完善中",retrying:"重试中",failed:"失败",done:"已完成"}[t.stage]||t.stage) : ""} · 负责人：${esc((t.assign||[]).join("、")||"待定")}</div>
       <div class="section-title">任务描述</div>
-      <div style="font-size:12px;white-space:pre-wrap;color:#6e5f50;margin-bottom:8px">${esc(t.desc||"(无描述)")}</div>
+      <div style="font-size:12px;white-space:pre-wrap;color:#6e5f50;margin-bottom:8px">${esc(t.desc||"(无描述)")}</div>`;
+    // 子任务进度（任务拆解可视化）
+    if (t.subtasks && t.subtasks.length) {
+      body.appendChild(sec("子任务进度（" + t.subtasks.filter(s => s.done).length + "/" + t.subtasks.length + "）"));
+      for (const st of t.subtasks) {
+        const done = st.done, cur = t.currentSubtask === st.title;
+        body.innerHTML += `<div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 6px;margin-bottom:4px;background:${done ? "#2a6a4f" : cur ? "#5a4020" : "#3a2a1a"};border:1px solid ${done ? "#5fbf8f" : "#1a120a"};border-radius:4px">
+          <span>${done ? "✅" : cur ? "⏳" : "⬜"}</span>
+          <span style="color:${done ? "#cfe8da" : "#ffe8a0"}">${esc(st.title)}</span>
+        </div>`;
+      }
+    }
+    body.innerHTML += `
       <div class="section-title">员工产出</div>
       <div style="font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:8px;border-radius:4px;max-height:180px;overflow-y:auto;margin-bottom:8px">${esc(t.output||"(尚未产出)")}</div>
       <div class="section-title">工作区文件</div>

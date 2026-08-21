@@ -18,6 +18,7 @@ window.PM = (function () {
         id: t.id, title: t.title, desc: t.desc, assign: t.assign || [],
         status: t.status, stage: t.stage || "", priority: t.priority || "medium", workspace: t.workspace, output: t.output || "",
         outputFiles: t.outputFiles || [], createdAt: t.createdAt,
+        subtasks: t.subtasks || [], currentSubtask: t.currentSubtask || "",
       }));
       Ss.connected = true;
       Ss.lastSync = Date.now();

@@ -53,10 +53,18 @@ async function dispatchTask(task) {
     C.saveEmployees(es);
     // 实际执行（取第一个员工执行），实时回写执行阶段
     const emp = assignees[0];
-    const setStage = (stage) => {
+    const setStage = (stage, info) => {
       const k = C.loadKanban();
       const t = k.tasks.find(x => x.id === task.id);
-      if (t) { t.stage = stage; t.status = stage === "done" ? "done" : "doing"; t.updatedAt = Date.now(); C.saveKanban(k); }
+      if (t) {
+        t.stage = stage; t.status = stage === "done" ? "done" : "doing"; t.updatedAt = Date.now();
+        // 子任务进度（任务拆解可视化）：当前子任务完成时标记 done
+        if (info && info.subtasks && Array.isArray(info.subtasks)) {
+          t.subtasks = info.subtasks.map((s, i) => ({ title: s, done: (info.subtaskIndex != null) && i <= info.subtaskIndex }));
+        }
+        if (info && info.subtask != null) { t.currentSubtask = info.subtask; }
+        C.saveKanban(k);
+      }
     };
     try {
       const out = await C.executeTask(emp, task, setStage);

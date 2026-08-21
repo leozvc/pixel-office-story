@@ -189,19 +189,38 @@ function employeeSkillView(emp) {
 }
 
 // 员工执行任务：LLM 线程 + 产出落盘工作区
+// onStage(stage, info) 实时回写阶段；info 可带 subtask/subtasks/subtaskIndex/subtaskTotal 用于子任务进度可视化
 async function executeTask(emp, task, onStage) {
   const history = empHistory(emp.id);
   if (onStage) onStage("planning"); // 计划中
   // 多步骤推进：先理解任务 + 制定执行计划
-  history.push({ role: "user", content: `【新任务】${task.title}\n任务描述：${task.desc || ""}\n\n步骤1：请先说明你打算如何完成这个任务（1-3句执行计划），并给出你要产出的交付物清单。` });
-  const plan = await llm(history, { maxTokens: 600, timeout: 60000 });
+  history.push({ role: "user", content: `【新任务】${task.title}\n任务描述：${task.desc || ""}\n\n步骤1：请先说明你打算如何完成这个任务（1-3句执行计划）。然后输出一份子任务清单 JSON（数组，每个元素 {"title":"子任务名","desc":"要完成什么"}，2-5 个可执行的子任务，按顺序推进直至交付完整成果）。格式：先写执行计划文本，最后单独一行输出：SUBTASKS={"list":[{"title":"...","desc":"..."}]}` });
+  const plan = await llm(history, { maxTokens: 800, timeout: 60000 });
   history.push({ role: "assistant", content: plan });
-  if (onStage) onStage("executing"); // 执行中
-  // 步骤2：实际执行并产出完整交付物，写入工作区
-  history.push({ role: "user", content: `步骤2：现在请实际完成该任务，产出完整可交付内容（代码/方案/报告/文案等全文），并写入工作区目录 ${task.workspace}。完成后用中文汇报你交付了什么、文件路径在哪。` });
-  let out = await llm(history, { maxTokens: 2500, timeout: 180000 });
-  history.push({ role: "assistant", content: out });
-  saveEmpHistory(emp.id, history);
+  // 解析子任务清单（尽力解析，失败则退化为单任务执行）
+  let subtasks = parseSubtasks(plan);
+  if (onStage) onStage("executing", { subtasks: subtasks.map(s => s.title) }); // 执行中
+  // 步骤2：按子任务逐个推进（有子任务清单时），产出完整交付物写入工作区
+  const taskPrompt = `当前任务：${task.title}\n任务描述：${task.desc || ""}\n工作区目录：${task.workspace}（把交付物文件写入此目录，并在汇报中说明文件路径）`;
+  let out = "";
+  if (subtasks.length) {
+    // 先让 LLM 逐个完成每个子任务（累积到最终完整交付）
+    for (let i = 0; i < subtasks.length; i++) {
+      const st = subtasks[i];
+      if (onStage) onStage("executing", { subtasks: subtasks.map(s => s.title), subtaskIndex: i, subtaskTotal: subtasks.length, subtask: st.title });
+      const stepMsg = `步骤2.${i + 1}（子任务 ${i + 1}/${subtasks.length}）：${st.title}\n要求：${st.desc || ""}\n\n${i === subtasks.length - 1 ? "这是最后一个子任务，请把前面所有子任务的成果汇总为最终完整交付物（代码/方案/报告/文案全文），并写入工作区文件。" : "完成该子任务，简洁说明要点即可，最终交付物在最后一步统一汇总。"}`;
+      history.push({ role: "user", content: stepMsg });
+      const stepOut = await llm(history, { maxTokens: 2500, timeout: 180000 });
+      history.push({ role: "assistant", content: stepOut });
+      saveEmpHistory(emp.id, history);
+      out = stepOut;
+    }
+  } else {
+    history.push({ role: "user", content: `步骤2：现在请实际完成该任务，产出完整可交付内容（代码/方案/报告/文案等全文），并写入工作区目录 ${task.workspace}。完成后用中文汇报你交付了什么、文件路径在哪。` });
+    out = await llm(history, { maxTokens: 2500, timeout: 180000 });
+    history.push({ role: "assistant", content: out });
+    saveEmpHistory(emp.id, history);
+  }
   // 质量校验：产出太短则重试一次（要求补充完整交付物）
   if (out.trim().length < 40) {
     if (onStage) onStage("polishing"); // 完善中
@@ -213,9 +232,26 @@ async function executeTask(emp, task, onStage) {
   if (onStage) onStage("done"); // 完成
   try {
     fs.mkdirSync(task.workspace, { recursive: true });
-    fs.writeFileSync(path.join(task.workspace, "TASK.md"), `# ${task.title}\n\n## 任务描述\n${task.desc || ""}\n\n## 执行计划\n${plan}\n\n## 员工产出\n${out}\n`, "utf8");
+    const stMd = subtasks.length ? "\n\n## 子任务清单\n" + subtasks.map((s, i) => `${i + 1}. ${s.title}：${s.desc || ""}`).join("\n") : "";
+    fs.writeFileSync(path.join(task.workspace, "TASK.md"), `# ${task.title}\n\n## 任务描述\n${task.desc || ""}\n\n## 执行计划\n${plan}${stMd}\n\n## 员工产出\n${out}\n`, "utf8");
   } catch (e) {}
   return out;
+}
+
+// 解析计划文本中的子任务清单 JSON（SUBTASKS={"list":[...]}）
+function parseSubtasks(planText) {
+  try {
+    const m = String(planText || "").match(/SUBTASKS\s*=\s*(\{[\s\S]*?\})\s*$/);
+    if (m) {
+      const obj = JSON.parse(m[1]);
+      const list = obj.list || obj.subtasks || [];
+      if (Array.isArray(list)) {
+        const valid = list.filter(x => x && typeof x.title === "string" && x.title.trim()).slice(0, 6).map(x => ({ title: x.title.trim(), desc: (x.desc || "").trim() }));
+        if (valid.length >= 1) return valid;
+      }
+    }
+  } catch (e) {}
+  return [];
 }
 
 function json(res, code, obj) {

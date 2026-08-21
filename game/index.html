@@ -189,6 +189,8 @@
           }
           // 同步资金（任务完成会获得奖励）
           try { UI.refreshFunds(); } catch (e) {}
+          // 同步公司等级（可能触发升级庆祝）
+          try { UI.refreshCompany(); } catch (e) {}
           }
         }
       }).catch(function () {}).then(function () { UI.syncing = false; });

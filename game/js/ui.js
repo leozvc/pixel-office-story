@@ -9,40 +9,44 @@ window.UI = (function () {
   const $ = id => document.getElementById(id);
 
   function init() {
-    el = {
-      hud: $("hud"), emp: $("hud-team"),
-      bell: $("hud-bell"), badge: $("hud-bell").querySelector(".badge"),
-      sound: $("hud-sound"), net: $("hud-net"),
-      chatBody: $("chat-body"), chatInput: $("chat-input"), chatSend: $("chat-send"), chatHead: $("chat-head"),
-      mic: $("mic-btn"), quickRow: $("quick-row"),
-      toasts: $("toasts"), scene: $("scene"),
-      boot: $("boot-screen"), bootBtn: $("boot-btn"),
-      panels: { emp: $("panel-emp"), tasks: $("panel-tasks"), notif: $("panel-notif"), connect: $("panel-connect"), tasknew: $("panel-tasknew"), taskdetail: $("panel-taskdetail") },
-    };
+    try {
+      const bellEl = $("hud-bell");
+      el = {
+        hud: $("hud"), emp: $("hud-team"),
+        bell: bellEl, badge: bellEl ? bellEl.querySelector(".badge") : null,
+        sound: $("hud-sound"), net: $("hud-net"),
+        chatBody: $("chat-body"), chatInput: $("chat-input"), chatSend: $("chat-send"), chatHead: $("chat-head"),
+        mic: $("mic-btn"), quickRow: $("quick-row"),
+        toasts: $("toasts"), scene: $("scene"),
+        boot: $("boot-screen"), bootBtn: $("boot-btn"),
+        panels: { emp: $("panel-emp"), tasks: $("panel-tasks"), notif: $("panel-notif"), connect: $("panel-connect"), tasknew: $("panel-tasknew"), taskdetail: $("panel-taskdetail") },
+      };
     if (el.net) el.net.addEventListener("click", () => openPanel("connect"));
     if (el.bell) el.bell.addEventListener("click", () => openPanel("notif"));
     const fundsBtn = $("hud-funds"); if (fundsBtn) fundsBtn.addEventListener("click", () => { openPanel("tasks"); renderEconomy(); });
     const empBtn = $("hud-team"); if (empBtn) empBtn.addEventListener("click", () => openPanel("emp"));
     const taskBtn = $("hud-tasks"); if (taskBtn) taskBtn.addEventListener("click", () => openPanel("tasks"));
     const newBtn = $("hud-newtask"); if (newBtn) newBtn.addEventListener("click", openTaskNew);
-    el.sound.addEventListener("click", toggleSound);
-    el.chatSend.addEventListener("click", sendChat);
-    el.chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+    if (el.sound) el.sound.addEventListener("click", toggleSound);
+    if (el.chatSend) el.chatSend.addEventListener("click", sendChat);
+    if (el.chatInput) el.chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
     if (el.mic) el.mic.addEventListener("click", startVoice);
-    el.bootBtn.addEventListener("click", startBoot);
+    if (el.bootBtn) el.bootBtn.addEventListener("click", startBoot);
     const chips = ["你好", "招个程序员", "帮我安排一个任务：写一个登录页", "汇报进度"];
-    el.quickRow.innerHTML = "";
-    for (const c of chips) {
-      const b = document.createElement("button");
-      b.className = "quick-chip"; b.textContent = c;
-      b.addEventListener("click", () => { el.chatInput.value = c; sendChat(); });
-      el.quickRow.appendChild(b);
+    if (el.quickRow) {
+      el.quickRow.innerHTML = "";
+      for (const c of chips) {
+        const b = document.createElement("button");
+        b.className = "quick-chip"; b.textContent = c;
+        b.addEventListener("click", () => { if (el.chatInput) { el.chatInput.value = c; sendChat(); } });
+        el.quickRow.appendChild(b);
+      }
+      // 快捷入口：项目周报（直接打开周报面板）
+      const repChip = document.createElement("button");
+      repChip.className = "quick-chip"; repChip.textContent = "📋 项目周报";
+      repChip.addEventListener("click", () => { openPanel("tasks"); renderWeeklyReport(); });
+      el.quickRow.appendChild(repChip);
     }
-    // 快捷入口：项目周报（直接打开周报面板）
-    const repChip = document.createElement("button");
-    repChip.className = "quick-chip"; repChip.textContent = "📋 项目周报";
-    repChip.addEventListener("click", () => { openPanel("tasks"); renderWeeklyReport(); });
-    el.quickRow.appendChild(repChip);
     document.querySelectorAll(".panel-overlay").forEach(o => { o.addEventListener("click", e => { if (e.target === o) closeAllPanels(); }); });
     document.querySelectorAll(".panel .close").forEach(b => { b.addEventListener("click", closeAllPanels); });
     S.on(renderHUD);
@@ -63,6 +67,23 @@ window.UI = (function () {
       const comp = Ss.company ? (Ss.company.emoji + " " + Ss.company.name + " Lv." + Ss.company.level) : "🏠 像素软件株式会社";
       bco.innerHTML = `${esc(comp)}<br><span class="bco-emp">👥 ${Ss.employees.length} 员工</span> · <span class="bco-task">📋 ${Ss.tasks.length} 任务</span>${Ss.funds != null ? ' · 💰 ' + fmt(Ss.funds) : ""}`;
     }
+    } catch (e) {
+      // init 容错：重新完整构建 el（null 安全），确保 UI 全功能可用
+      try {
+        const bellEl = $("hud-bell");
+        el = {
+          hud: $("hud"), emp: $("hud-team"),
+          bell: bellEl, badge: bellEl ? bellEl.querySelector(".badge") : null,
+          sound: $("hud-sound"), net: $("hud-net"),
+          chatBody: $("chat-body"), chatInput: $("chat-input"), chatSend: $("chat-send"), chatHead: $("chat-head"),
+          mic: $("mic-btn"), quickRow: $("quick-row"),
+          toasts: $("toasts"), scene: $("scene"),
+          boot: $("boot-screen"), bootBtn: $("boot-btn"),
+          panels: { emp: $("panel-emp"), tasks: $("panel-tasks"), notif: $("panel-notif"), connect: $("panel-connect"), tasknew: $("panel-tasknew"), taskdetail: $("panel-taskdetail") },
+        };
+        if (el.bootBtn) el.bootBtn.addEventListener("click", startBoot);
+      } catch (_) {}
+    }
   }
 
   function greetingText() {
@@ -79,9 +100,13 @@ window.UI = (function () {
     return `${day}，老板！我是项目经理佐藤美咲。${brief}\n\n你可以：\n· 说「招个程序员/美术/测试/运营」雇佣员工（需花费资金）\n· 说「帮我安排一个任务：…」创建任务（自动拆解子任务并执行）\n· 任务交付后可给员工提反馈，员工会自动修订再交付\n· 点 🎤 语音直接跟我说话\n· 点 📋 看任务看板 / 生成周报 / 查看统计 / 项目总览\n· 说「汇报进度」查看所有任务状态`;
   }
   function startBoot() {
-    SFX.init(); SFX.play("open"); SFX.startBGM();
-    el.boot.classList.add("hide"); bootDone = true;
-    setTimeout(() => el.boot.style.display = "none", 500);
+    try {
+      SFX.init(); SFX.play("open"); SFX.startBGM();
+    } catch (e) {}
+    const bootEl = (el && el.boot) || $("boot-screen");
+    if (!bootEl) return;
+    bootEl.classList.add("hide"); bootDone = true;
+    setTimeout(() => { try { bootEl.style.display = "none"; } catch (e) {} }, 500);
     setTimeout(() => addPM(greetingText()), 400);
   }
 
@@ -95,26 +120,29 @@ window.UI = (function () {
   }
   function afterReply() { renderHUD(); renderBadge(); SFX.play("msg"); }
   function addBoss(text) {
+    if (!el.chatBody) return;
     const m = document.createElement("div");
     m.className = "msg boss";
     m.innerHTML = '<div class="avatar">老</div><div class="bubble"><span class="name">老板</span>' + esc(text) + "</div>";
     el.chatBody.appendChild(m); scrollChat();
   }
   function addPM(text) {
+    if (!el.chatBody) return;
     const m = document.createElement("div");
     m.className = "msg pm";
     m.innerHTML = '<div class="avatar">P</div><div class="bubble"><span class="name">佐藤美咲 · 项目经理</span>' + esc(text) + "</div>";
     el.chatBody.appendChild(m); scrollChat();
   }
   function addSys(text) {
+    if (!el.chatBody) return;
     const m = document.createElement("div");
     m.className = "msg sys";
     m.innerHTML = '<div class="bubble">' + esc(text) + "</div>";
     el.chatBody.appendChild(m); scrollChat();
   }
-  function showTyping() { el.chatHead.querySelector(".typing").style.display = "block"; }
-  function hideTyping() { el.chatHead.querySelector(".typing").style.display = "none"; }
-  function scrollChat() { el.chatBody.scrollTop = el.chatBody.scrollHeight; }
+  function showTyping() { if (el.chatHead) { const t = el.chatHead.querySelector(".typing"); if (t) t.style.display = "block"; } }
+  function hideTyping() { if (el.chatHead) { const t = el.chatHead.querySelector(".typing"); if (t) t.style.display = "none"; } }
+  function scrollChat() { if (el.chatBody) el.chatBody.scrollTop = el.chatBody.scrollHeight; }
 
   // ---------- 语音 ASR ----------
   let mediaRecorder = null, audioChunks = [], recording = false;
@@ -927,6 +955,8 @@ window.UI = (function () {
       const projects = proj.projects || [];
       const funds = eco.funds || 0;
       const Ss = S.get();
+      // 同步到状态，保持 HUD 一致
+      Ss.funds = funds; Ss.economy = eco; Ss.company = co; S.save(); S.emit();
       body.innerHTML = "";
       body.appendChild(sec("🏢 公司总览"));
       // 公司等级 + 资金
@@ -1191,5 +1221,5 @@ window.UI = (function () {
     } catch (e) { return false; }
   }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany };
 })();

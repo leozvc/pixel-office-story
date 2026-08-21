@@ -316,10 +316,17 @@ function recordEconomy(type, amount, label) {
   saveEconomy(e);
   return e.funds;
 }
-// 任务完成奖励（按优先级）
+// 任务完成奖励（按优先级，公司等级越高奖励加成越多）
+const REWARD_LEVEL_BONUS = { 1: 1.0, 2: 1.25, 3: 1.5, 4: 2.0 }; // 等级加成系数
 function rewardTask(task) {
   const amt = REWARD[task.priority || "medium"] || REWARD.medium;
-  return recordEconomy("income", amt, `完成任务《${task.title}》`);
+  // 根据公司等级加成：高级公司任务更值钱（强化"成长→收益"正反馈）
+  let bonus = 1.0;
+  try { const co = companyView(); bonus = REWARD_LEVEL_BONUS[co.level] || 1.0; } catch (e) {}
+  const final = Math.round(amt * bonus);
+  const label = bonus > 1 ? `完成任务《${task.title}》(x${bonus})` : `完成任务《${task.title}》`;
+  recordEconomy("income", final, label);
+  return final; // 返回实际入账金额（含加成）
 }
 // 任务失败扣款
 function penalizeTask(task) {
@@ -336,7 +343,9 @@ function chargeHire(role, name) {
 // 经济视图（供前端）
 function economyView() {
   const e = loadEconomy();
-  return { funds: e.funds || START_FUNDS, ledger: e.ledger.slice(0, 30), hireCost: HIRE_COST, reward: REWARD };
+  let levelBonus = 1.0;
+  try { const co = companyView(); levelBonus = REWARD_LEVEL_BONUS[co.level] || 1.0; } catch (err) {}
+  return { funds: e.funds || START_FUNDS, ledger: e.ledger.slice(0, 30), hireCost: HIRE_COST, reward: REWARD, rewardBonus: levelBonus, bonusNote: levelBonus > 1 ? "当前公司等级任务奖励 x" + levelBonus : "" };
 }
 
 // ---------- 公司等级/里程碑 ----------

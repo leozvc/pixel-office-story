@@ -110,8 +110,8 @@ async function dispatchTask(task, opts) {
         // 经济系统：任务完成奖励（仅首次完成奖励，修订不重复发放）
         if (!t.rewarded) {
           t.rewarded = true;
-          t.reward = C.REWARD[t.priority || "medium"] || C.REWARD.medium;
-          t.fundsAfter = C.rewardTask(t);
+          t.reward = C.rewardTask(t); // 含公司等级加成后的实际入账
+          t.fundsAfter = C.economyView().funds;
         }
         C.saveKanban(k);
       }

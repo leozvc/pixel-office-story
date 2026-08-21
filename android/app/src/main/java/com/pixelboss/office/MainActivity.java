@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -56,7 +57,24 @@ public class MainActivity extends Activity {
         s.setAllowUniversalAccessFromFileURLs(true);
 
         webView.setBackgroundColor(0xFF2B2118);
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            // 允许 WebView 内的 getUserMedia 请求（语音输入需要麦克风权限）
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                // 无条件授予音频权限（游戏只用麦克风）；如需摄像头可加 RESOURCE_VIDEO_CAPTURE
+                if (request.getResources() != null && request.getResources().length > 0) {
+                    boolean hasAudio = false;
+                    for (String r : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) { hasAudio = true; break; }
+                    }
+                    if (hasAudio) {
+                        request.grant(request.getResources());
+                        return;
+                    }
+                }
+                super.onPermissionRequest(request);
+            }
+        });
         webView.setWebViewClient(new WebViewClient());
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 

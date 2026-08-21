@@ -392,7 +392,7 @@ window.UI = (function () {
         card.className = "task-card";
         card.style.cssText = "background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:8px;margin-bottom:8px;cursor:pointer";
         const stTxt = { todo: "待办", doing: "执行中", done: "已完成", failed: "失败" }[t.status];
-        const stageTxt = { planning: "计划中", executing: "执行中", polishing: "完善中", retrying: "重试中", failed: "失败", done: "已完成" }[t.stage] || "";
+        const stageTxt = { planning: "计划中", executing: "执行中", polishing: "完善中", retrying: "重试中", revising: "修订中", failed: "失败", done: "已完成" }[t.stage] || "";
         const statusHtml = t.status === "done" ? '<span style="color:#5fbf8f">✅ 已完成</span>'
           : t.status === "failed" ? '<span style="color:#e06c5a">❌ 失败</span>'
           : t.status === "doing" ? '<span style="color:#f2d04a">⏳ ' + esc(stageTxt||"执行中") + '</span>'
@@ -589,7 +589,7 @@ window.UI = (function () {
     body.appendChild(sec("任务详情"));
     body.innerHTML += `
       <div style="font-size:15px;font-weight:bold;margin-bottom:6px">${esc(t.title)}</div>
-      <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)}${t.stage ? " · " + esc({planning:"计划中",executing:"执行中",polishing:"完善中",retrying:"重试中",failed:"失败",done:"已完成"}[t.stage]||t.stage) : ""} · 负责人：${esc((t.assign||[]).join("、")||"待定")}</div>
+      <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)}${t.stage ? " · " + esc({planning:"计划中",executing:"执行中",polishing:"完善中",retrying:"重试中",revising:"修订中",failed:"失败",done:"已完成"}[t.stage]||t.stage) : ""} · 负责人：${esc((t.assign||[]).join("、")||"待定")}</div>
       <div class="section-title">任务描述</div>
       <div style="font-size:12px;white-space:pre-wrap;color:#6e5f50;margin-bottom:8px">${esc(t.desc||"(无描述)")}</div>`;
     // 子任务进度（任务拆解可视化）
@@ -607,7 +607,31 @@ window.UI = (function () {
       <div class="section-title">员工产出</div>
       <div style="font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:8px;border-radius:4px;max-height:180px;overflow-y:auto;margin-bottom:8px">${esc(t.output||"(尚未产出)")}</div>
       <div class="section-title">工作区文件</div>
-      <div id="ws-files" style="font-size:12px;color:#8a6f52;margin-bottom:8px">加载中…</div>`;
+      <div id="ws-files" style="font-size:12px;color:#8a6f52;margin-bottom:8px">加载中…</div>
+      <div class="section-title">老板反馈</div>
+      <div id="fb-list" style="font-size:12px;color:#8a6f52;margin-bottom:6px">${renderFeedbackList(t.feedback)}</div>
+      <div style="display:flex;gap:6px;align-items:stretch">
+        <input id="fb-input" placeholder="给员工提反馈，员工会按反馈修订交付…" style="flex:1;background:#f4f1ea;color:#2f2b26;border:1px solid #c8b8a0;border-radius:4px;padding:6px;font-size:12px" autocomplete="off">
+        <button class="btn blue" id="fb-send" style="flex-shrink:0">提交</button>
+      </div>`;
+    // 老板反馈提交：触发员工修订
+    const fbBtn = $("fb-send");
+    const fbInp = $("fb-input");
+    if (fbBtn && fbInp) {
+      fbBtn.addEventListener("click", async () => {
+        const fb = fbInp.value.trim();
+        if (!fb) { addPM("请先填写反馈内容。"); return; }
+        fbBtn.disabled = true; fbBtn.textContent = "修订中…";
+        try {
+          await Bridge.sendFeedback(t.id, fb);
+          addPM("收到！已把反馈转达员工「" + t.title + "」，员工将按你的要求修订并重新交付。");
+          fbInp.value = "";
+          await PM.syncFromBridge().catch(() => {});
+          renderTaskDetail();
+        } catch (e) { addPM("反馈提交失败：" + (e.message||"")); }
+        fbBtn.disabled = false; fbBtn.textContent = "提交";
+      });
+    }
     // 异步加载工作区文件列表
     if (window.Bridge && Bridge.isConfigured() && t.workspace) {
       Bridge.listWorkspace(t.id).then(d => {
@@ -638,6 +662,14 @@ window.UI = (function () {
       } catch (e) { addPM("执行失败：" + (e.message||"")); }
     });
     body.appendChild(btn);
+  }
+
+  // 渲染老板反馈历史列表
+  function renderFeedbackList(fb) {
+    if (!fb || !fb.length) return '<span style="color:#8a6f52">（暂无反馈）</span>';
+    return fb.map(f => '<div style="background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:6px;margin-bottom:4px">' +
+      '<div style="font-size:10px;color:#b0a080;margin-bottom:2px">老板 · ' + new Date(f.at||Date.now()).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}) + '</div>' +
+      '<div style="color:#ffe8a0">' + esc(f.text) + '</div></div>').join("");
   }
 
   // 查看工作区文件内容

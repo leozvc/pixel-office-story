@@ -190,8 +190,23 @@ function employeeSkillView(emp) {
 
 // 员工执行任务：LLM 线程 + 产出落盘工作区
 // onStage(stage, info) 实时回写阶段；info 可带 subtask/subtasks/subtaskIndex/subtaskTotal 用于子任务进度可视化
-async function executeTask(emp, task, onStage) {
+// revise 可选：{ feedback, originalOutput } 表示老板反馈后的修订执行
+async function executeTask(emp, task, onStage, revise) {
   const history = empHistory(emp.id);
+  if (revise) {
+    // ---- 修订模式：基于老板反馈重新修订交付物 ----
+    if (onStage) onStage("planning", { subtasks: ["理解老板反馈", "修订交付物"], subtaskIndex: 0, subtask: "理解老板反馈" });
+    history.push({ role: "user", content: `【修订任务】${task.title}\n任务描述：${task.desc || ""}\n\n老板对你此前的交付给出了反馈，请你认真理解并按要求修订。\n\n老板反馈：\n${revise.feedback || "(无具体反馈)"}\n\n你此前的交付：\n${(revise.originalOutput || task.output || "").slice(0, 2000)}\n\n工作区目录：${task.workspace}\n\n请：1) 先简要说明你理解了哪些反馈点；2) 然后修订并产出完整的修订版交付物（代码/方案/报告/文案全文），写入工作区；3) 用中文汇报修订了哪些内容、文件路径在哪。` });
+    let out = await llm(history, { maxTokens: 2500, timeout: 180000 });
+    history.push({ role: "assistant", content: out });
+    saveEmpHistory(emp.id, history);
+    if (onStage) onStage("done");
+    try {
+      fs.mkdirSync(task.workspace, { recursive: true });
+      fs.writeFileSync(path.join(task.workspace, "REVISION.md"), `# ${task.title} 修订记录\n\n## 老板反馈\n${revise.feedback || ""}\n\n## 修订版交付\n${out}\n`, "utf8");
+    } catch (e) {}
+    return out;
+  }
   if (onStage) onStage("planning"); // 计划中
   // 多步骤推进：先理解任务 + 制定执行计划
   history.push({ role: "user", content: `【新任务】${task.title}\n任务描述：${task.desc || ""}\n\n步骤1：请先说明你打算如何完成这个任务（1-3句执行计划）。然后输出一份子任务清单 JSON（数组，每个元素 {"title":"子任务名","desc":"要完成什么"}，2-5 个可执行的子任务，按顺序推进直至交付完整成果）。格式：先写执行计划文本，最后单独一行输出：SUBTASKS={"list":[{"title":"...","desc":"..."}]}` });

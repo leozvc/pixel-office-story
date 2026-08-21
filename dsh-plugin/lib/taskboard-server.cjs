@@ -18,9 +18,10 @@ C.ensureDirs();
 
 // 任务执行调度：把 todo 任务交给员工执行（顺序，避免并发混乱）
 let dispatching = new Set(); // 正在执行的任务 id，避免重复派发
-async function dispatchTask(task) {
+async function dispatchTask(task, opts) {
   // 若已在执行则跳过
   if (dispatching.has(task.id)) return;
+  const revise = opts && opts.revise ? { feedback: opts.feedback || "", originalOutput: opts.originalOutput || task.output || "" } : null;
   const es = C.loadEmployees();
   const assignees = task.assigneeIds.length ? task.assigneeIds.map(id => es.find(e => e.id === id)).filter(Boolean) : es.filter(e => e.role !== "pm" && e.id !== undefined).slice(0, 1);
   if (!assignees.length) {
@@ -67,7 +68,7 @@ async function dispatchTask(task) {
       }
     };
     try {
-      const out = await C.executeTask(emp, task, setStage);
+      const out = await C.executeTask(emp, task, setStage, revise);
       const k = C.loadKanban();
       const t = k.tasks.find(x => x.id === task.id);
       if (t) {
@@ -117,23 +118,25 @@ async function dispatchTask(task) {
 // 同一员工的多个任务仍串行（员工一次只干一个活）
 const MAX_PARALLEL = 3;
 let activeDispatches = 0;
-const waitingQueue = [];
+const waitingQueue = []; // 元素：{ task, opts }
 function scheduleNext() {
   if (activeDispatches >= MAX_PARALLEL) return;
   // 从等待队列中挑一个"员工未繁忙"的任务执行
   const es = C.loadEmployees();
   const busyEmp = new Set(es.filter(e => e.status === "working").map(e => e.id));
-  const idx = waitingQueue.findIndex(t => !(t.assigneeIds || []).some(id => busyEmp.has(id)));
+  const idx = waitingQueue.findIndex(q => !(q.task.assigneeIds || []).some(id => busyEmp.has(id)));
   if (idx < 0) return; // 都忙，等有人空闲后再调度
-  const task = waitingQueue.splice(idx, 1)[0];
+  const { task, opts } = waitingQueue.splice(idx, 1)[0];
   activeDispatches++;
-  dispatchTask(task).catch(() => {}).finally(() => {
+  dispatchTask(task, opts).catch(() => {}).finally(() => {
     activeDispatches--;
     scheduleNext();
   });
 }
-function queueDispatch(task) {
-  waitingQueue.push(task);
+function queueDispatch(task, opts) {
+  // 兼容裸 task 与 { task, opts } 两种入参
+  if (task && task.task) { opts = task.opts; task = task.task; }
+  waitingQueue.push({ task, opts });
   scheduleNext();
 }
 // 当员工状态变化时可能有人空闲，重新调度
@@ -211,6 +214,28 @@ const server = http.createServer(async (req, res) => {
       // 自动派发执行，任务创建后立即推进
       queueDispatch(task);
       C.json(res, 200, { ok: true, task, autoDispatched: true });
+      return;
+    }
+    if (req.method === "POST" && pathname === "/v1/tasks/feedback") {
+      const b = await C.readBody(req);
+      const k = C.loadKanban();
+      const t = k.tasks.find(x => x.id === b.id);
+      if (!t) { C.json(res, 404, { ok: false, error: "task not found" }); return; }
+      const fb = (b.feedback || "").toString().trim();
+      if (!fb) { C.json(res, 400, { ok: false, error: "feedback required" }); return; }
+      if (!t.feedback) t.feedback = [];
+      t.feedback.push({ text: fb, at: Date.now(), from: "boss" });
+      t.updatedAt = Date.now();
+      // 标记为待修订：回滚到 doing，记录上一次产出作为修订输入
+      t.status = "doing";
+      t.stage = "revising";
+      t.reviseFrom = t.output || "";
+      t.reviseAt = Date.now();
+      C.saveKanban(k);
+      // 触发修订执行
+      queueDispatch(t, { revise: true, feedback: fb, originalOutput: t.reviseFrom });
+      DshSync.syncTaskToDsh(t).catch(e => console.log("[pixb-sync] feedback 同步失败:", e.message));
+      C.json(res, 200, { ok: true, task: { ...t, history: undefined } });
       return;
     }
     if (req.method === "POST" && pathname === "/v1/tasks/dispatch") {

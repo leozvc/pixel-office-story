@@ -19,6 +19,7 @@ window.PM = (function () {
         status: t.status, stage: t.stage || "", priority: t.priority || "medium", workspace: t.workspace, output: t.output || "",
         outputFiles: t.outputFiles || [], createdAt: t.createdAt,
         subtasks: t.subtasks || [], currentSubtask: t.currentSubtask || "",
+        feedback: t.feedback || [], revising: t.stage === "revising",
       }));
       Ss.connected = true;
       Ss.lastSync = Date.now();

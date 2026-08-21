@@ -69,6 +69,9 @@ async function dispatchTask(task) {
         t.status = "done";
         t.updatedAt = Date.now();
         C.saveKanban(k);
+        // 记入公司长期记忆
+        C.rememberTask(t);
+        C.rememberEvent(`完成任务《${t.title}》`);
       }
     } catch (e) {
       const k = C.loadKanban();
@@ -139,6 +142,7 @@ const server = http.createServer(async (req, res) => {
       const b = await C.readBody(req);
       const emp = C.createEmployee(b.name, b.role || "dev");
       const es = C.loadEmployees(); es.push(emp); C.saveEmployees(es);
+      C.rememberEmployee(emp); // 记入公司记忆
       C.json(res, 200, { ok: true, employee: { id: emp.id, name: emp.name, role: emp.role, roleName: emp.roleName, emoji: emp.emoji } });
       return;
     }
@@ -146,6 +150,11 @@ const server = http.createServer(async (req, res) => {
       const b = await C.readBody(req);
       C.saveEmployees(C.loadEmployees().filter(e => e.id !== b.id));
       C.json(res, 200, { ok: true });
+      return;
+    }
+    // 公司长期记忆（供游戏/调试查看）
+    if (req.method === "GET" && pathname === "/v1/memory") {
+      C.json(res, 200, { ok: true, memory: C.loadMemory(), summary: C.buildMemorySummary() });
       return;
     }
 
@@ -218,7 +227,8 @@ const server = http.createServer(async (req, res) => {
       if (!Array.isArray(messages) || !messages.length) { C.json(res, 400, { ok: false, error: "messages required" }); return; }
       const k = C.loadKanban();
       const es = C.loadEmployees();
-      const sys = C.PM_PROMPT + "\n\n当前任务看板（JSON）：\n" + JSON.stringify(k.tasks.map(t => ({ id: t.id, title: t.title, status: t.status, assign: t.assign, outputPreview: (t.output || "").slice(0, 100) }))) + "\n当前员工（JSON）：\n" + JSON.stringify(es.map(e => ({ name: e.name, role: e.role, status: e.status })));
+      const memory = C.buildMemorySummary();
+      const sys = C.PM_PROMPT + "\n\n【公司长期记忆】\n" + (memory || "(暂无历史记忆)") + "\n\n当前任务看板（JSON）：\n" + JSON.stringify(k.tasks.map(t => ({ id: t.id, title: t.title, status: t.status, assign: t.assign, outputPreview: (t.output || "").slice(0, 100) }))) + "\n当前员工（JSON）：\n" + JSON.stringify(es.map(e => ({ name: e.name, role: e.role, status: e.status })));
       const content = await C.llm([{ role: "system", content: sys }, ...messages], { maxTokens: 600, timeout: 60000 });
       C.json(res, 200, { ok: true, content, model: C.FAST_MODEL });
       return;

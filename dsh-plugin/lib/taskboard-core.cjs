@@ -22,6 +22,7 @@ const WORKSPACE_ROOT = process.env.PIXB_WORKSPACE || path.join(ROOT, "workspace"
 const DATA_DIR = path.join(ROOT, "data");
 const KANBAN_FILE = path.join(DATA_DIR, "kanban.json");
 const EMPLOYEES_FILE = path.join(DATA_DIR, "employees.json");
+const MEMORY_FILE = path.join(DATA_DIR, "memory.json");
 const STATE_FILE = process.env.PIXB_STATE || path.join(ROOT, "pairing.json");
 const WHISPER = process.env.PIXB_WHISPER || "/opt/homebrew/bin/whisper";
 
@@ -55,6 +56,55 @@ function loadKanban() { return readJSON(KANBAN_FILE, { tasks: [] }); }
 function saveKanban(k) { writeJSON(KANBAN_FILE, k); }
 function loadEmployees() { return readJSON(EMPLOYEES_FILE, []); }
 function saveEmployees(es) { writeJSON(EMPLOYEES_FILE, es); }
+
+// ---- 公司长期记忆 ----
+// 记录已完成任务、员工技能、关键事件，供 PM 对话注入历史上下文
+function loadMemory() {
+  return readJSON(MEMORY_FILE, { tasks: [], events: [], employees: {} });
+}
+function saveMemory(m) { writeJSON(MEMORY_FILE, m); }
+// 追加一条已完成任务记忆（去重 by id）
+function rememberTask(task) {
+  const m = loadMemory();
+  if (!m.tasks.some(x => x.id === task.id)) {
+    m.tasks.unshift({
+      id: task.id, title: task.title, assign: task.assign || [],
+      outputPreview: (task.output || "").slice(0, 120),
+      createdAt: task.createdAt, completedAt: Date.now(),
+    });
+    if (m.tasks.length > 50) m.tasks.length = 50;
+    saveMemory(m);
+  }
+}
+// 记录员工信息
+function rememberEmployee(emp) {
+  const m = loadMemory();
+  m.employees[emp.id] = { name: emp.name, role: emp.role, roleName: emp.roleName, updatedAt: Date.now() };
+  saveMemory(m);
+}
+// 追加一条关键事件
+function rememberEvent(text) {
+  const m = loadMemory();
+  m.events.unshift({ text, at: Date.now() });
+  if (m.events.length > 50) m.events.length = 50;
+  saveMemory(m);
+}
+// 构建 PM 记忆摘要（注入上下文）
+function buildMemorySummary() {
+  const m = loadMemory();
+  const parts = [];
+  if (m.employees && Object.keys(m.employees).length) {
+    const emps = Object.values(m.employees);
+    parts.push("团队成员：\n" + emps.map(e => `- ${e.name}（${e.roleName || e.role}）`).join("\n"));
+  }
+  if (m.tasks && m.tasks.length) {
+    parts.push("已完成任务（历史）:\n" + m.tasks.slice(0, 15).map(t => `- 【${t.title}】负责人:${(t.assign||[]).join("、")||"待定"}`).join("\n"));
+  }
+  if (m.events && m.events.length) {
+    parts.push("关键事件（历史）:\n" + m.events.slice(0, 10).map(e => `- ${e.text}`).join("\n"));
+  }
+  return parts.join("\n\n");
+}
 
 // ---------- 配对 ----------
 const pairCodes = new Map();
@@ -153,4 +203,4 @@ function transcribe(audioPath) {
 
 function localIPs() { const l = []; const ifs = os.networkInterfaces(); for (const k of Object.keys(ifs)) for (const i of ifs[k] || []) if (i.family === "IPv4" && !i.internal) l.push(i.address); return l; }
 
-module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, server: undefined };
+module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, server: undefined };

@@ -67,6 +67,7 @@ async function dispatchTask(task) {
         t.outputFiles = [];
         try { t.outputFiles = fs.readdirSync(task.workspace).filter(f => !f.endsWith(".txt")); } catch (e) {}
         t.status = "done";
+        t.completedAt = Date.now(); // 记录完成时间（用于统计耗时）
         t.updatedAt = Date.now();
         C.saveKanban(k);
         // 记入公司长期记忆 + 员工技能成长
@@ -240,6 +241,30 @@ const server = http.createServer(async (req, res) => {
       k.tasks = k.tasks.filter(x => x.id !== b.id);
       C.saveKanban(k);
       C.json(res, 200, { ok: true });
+      return;
+    }
+    // 数据统计
+    if (req.method === "GET" && pathname === "/v1/stats") {
+      const k = C.loadKanban();
+      const es = C.loadEmployees();
+      const tasks = k.tasks;
+      const total = tasks.length;
+      const done = tasks.filter(t => t.status === "done").length;
+      const doing = tasks.filter(t => t.status === "doing").length;
+      const todo = tasks.filter(t => t.status === "todo").length;
+      const failed = tasks.filter(t => t.status === "failed").length;
+      const successRate = total ? Math.round(done / total * 100) : 0;
+      // 平均耗时（有 completedAt 的任务）
+      const withDur = tasks.filter(t => t.completedAt && t.createdAt);
+      const avgDuration = withDur.length ? Math.round(withDur.reduce((s, t) => s + (t.completedAt - t.createdAt), 0) / withDur.length / 1000) : 0;
+      // 员工工作量
+      const empWork = es.map(e => ({
+        name: e.name, role: e.roleName,
+        done: (e.stats && e.stats.tasksDone) || 0,
+        level: (e.stats && e.stats.level) || 1,
+        domains: (e.stats && e.stats.domains) || {},
+      }));
+      C.json(res, 200, { ok: true, stats: { total, done, doing, todo, failed, successRate, avgDurationSec: avgDuration, empWork } });
       return;
     }
     if (req.method === "GET" && pathname.startsWith("/v1/tasks/") && pathname.endsWith("/workspace")) {

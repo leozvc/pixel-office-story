@@ -318,7 +318,13 @@ window.UI = (function () {
     const addBtn = document.createElement("button");
     addBtn.className = "btn green"; addBtn.textContent = "+ 新建任务";
     addBtn.addEventListener("click", openTaskNew);
-    top.appendChild(cnt); top.appendChild(addBtn);
+    const statsBtn = document.createElement("button");
+    statsBtn.className = "btn blue"; statsBtn.textContent = "📊 统计";
+    statsBtn.addEventListener("click", renderStats);
+    const btnWrap = document.createElement("div");
+    btnWrap.style.cssText = "display:flex;gap:6px";
+    btnWrap.appendChild(statsBtn); btnWrap.appendChild(addBtn);
+    top.appendChild(cnt); top.appendChild(btnWrap);
     body.appendChild(top);
 
     const board = document.createElement("div");
@@ -375,6 +381,46 @@ window.UI = (function () {
       board.appendChild(colDiv);
     }
     body.appendChild(board);
+  }
+
+  // ---------- 数据统计 ----------
+  async function renderStats() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("📊 数据统计"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">加载中…</div>';
+    try {
+      const d = await Bridge.getStats();
+      const s = d.stats || {};
+      const fmtDur = (sec) => { if (!sec) return "—"; if (sec < 60) return sec + "秒"; if (sec < 3600) return Math.round(sec/60) + "分"; return Math.round(sec/3600*10)/10 + "时"; };
+      body.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          <div class="stat-box" style="flex:1;min-width:90px;background:#3a2a1a;border:1px solid #1a120a;border-radius:6px;padding:8px;text-align:center"><div style="font-size:20px;color:#f2d04a;font-weight:bold">${s.total||0}</div><div style="font-size:11px;color:#b0a080">总任务</div></div>
+          <div class="stat-box" style="flex:1;min-width:90px;background:#3a2a1a;border:1px solid #1a120a;border-radius:6px;padding:8px;text-align:center"><div style="font-size:20px;color:#5fbf8f;font-weight:bold">${s.done||0}</div><div style="font-size:11px;color:#b0a080">已完成</div></div>
+          <div class="stat-box" style="flex:1;min-width:90px;background:#3a2a1a;border:1px solid #1a120a;border-radius:6px;padding:8px;text-align:center"><div style="font-size:20px;color:#f2d04a;font-weight:bold">${s.successRate||0}%</div><div style="font-size:11px;color:#b0a080">成功率</div></div>
+          <div class="stat-box" style="flex:1;min-width:90px;background:#3a2a1a;border:1px solid #1a120a;border-radius:6px;padding:8px;text-align:center"><div style="font-size:20px;color:#9fe8cf;font-weight:bold">${fmtDur(s.avgDurationSec)}</div><div style="font-size:11px;color:#b0a080">平均耗时</div></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:10px;font-size:12px;color:#b0a080">
+          <span>待办 ${s.todo||0}</span><span>执行中 ${s.doing||0}</span><span>失败 ${s.failed||0}</span>
+        </div>`;
+      // 员工工作量
+      const empWork = s.empWork || [];
+      if (empWork.length) {
+        body.innerHTML += sec("员工工作量");
+        for (const e of empWork) {
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #4a3520";
+          row.innerHTML = `<span>${esc(e.name)}（${esc(e.role||"")}）Lv.${e.level||1}</span><span style="color:#f2d04a">完成 ${e.done||0} 项</span>`;
+          body.appendChild(row);
+        }
+      }
+    } catch (e) { body.innerHTML += '<div class="notif-empty">统计失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
   }
 
   // ---------- 新建任务 ----------

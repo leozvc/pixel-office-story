@@ -86,6 +86,8 @@ window.Bridge = (function () {
   async function listWorkspace(id) { return await req("/v1/tasks/" + id + "/workspace", "GET", null, settings.token); }
   // 公司长期记忆
   async function getMemory() { return await req("/v1/memory", "GET", null, settings.token); }
+  // 数据统计
+  async function getStats() { return await req("/v1/stats", "GET", null, settings.token); }
 
   // ---- PM 对话 ----
   async function pmChat(messages, team, tasks) {
@@ -127,7 +129,7 @@ window.Bridge = (function () {
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
-    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, listWorkspace, getMemory,
+    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, listWorkspace, getMemory, getStats,
     pmChat, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };

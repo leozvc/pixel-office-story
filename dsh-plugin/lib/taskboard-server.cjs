@@ -103,11 +103,31 @@ async function dispatchTask(task) {
   }
 }
 
-// 任务派发队列（顺序执行）
-let dispatchChain = Promise.resolve();
-function queueDispatch(task) {
-  dispatchChain = dispatchChain.then(() => dispatchTask(task)).catch(() => {});
+// 任务派发：支持并行执行（并发上限），避免单任务串行阻塞
+// 同一员工的多个任务仍串行（员工一次只干一个活）
+const MAX_PARALLEL = 3;
+let activeDispatches = 0;
+const waitingQueue = [];
+function scheduleNext() {
+  if (activeDispatches >= MAX_PARALLEL) return;
+  // 从等待队列中挑一个"员工未繁忙"的任务执行
+  const es = C.loadEmployees();
+  const busyEmp = new Set(es.filter(e => e.status === "working").map(e => e.id));
+  const idx = waitingQueue.findIndex(t => !(t.assigneeIds || []).some(id => busyEmp.has(id)));
+  if (idx < 0) return; // 都忙，等有人空闲后再调度
+  const task = waitingQueue.splice(idx, 1)[0];
+  activeDispatches++;
+  dispatchTask(task).catch(() => {}).finally(() => {
+    activeDispatches--;
+    scheduleNext();
+  });
 }
+function queueDispatch(task) {
+  waitingQueue.push(task);
+  scheduleNext();
+}
+// 当员工状态变化时可能有人空闲，重新调度
+setInterval(() => scheduleNext(), 2000);
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
@@ -288,6 +308,13 @@ server.listen(PORT, HOST, () => {
   console.log("  工作区: " + C.WORKSPACE_ROOT);
   console.log("  本机 IP: " + C.localIPs().join(", "));
   console.log("----------------------------------------------------");
+  // 启动时复位残留 working 的员工（防止上次异常/重启导致员工卡在忙碌态，任务无法派发）
+  try {
+    const es0 = C.loadEmployees();
+    let changed = false;
+    for (const e of es0) { if (e.status === "working") { e.status = "idle"; changed = true; } }
+    if (changed) { C.saveEmployees(es0); console.log("[pixb] 已复位 " + es0.filter(e => e.status === "idle").length + " 名员工状态"); }
+  } catch (e) {}
   // 后台自动推进：定期扫描"未派发过"的 todo 任务自动派发执行，杜绝任务停滞
   setInterval(() => {
     const k = C.loadKanban();

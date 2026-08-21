@@ -195,8 +195,26 @@ window.UI = (function () {
     try {
       const d = await Bridge.getCompany();
       if (d && d.company) {
+        const prev = S.get().company;
         S.get().company = d.company;
         S.save(); S.emit();
+        // 里程碑升级庆祝：等级提升时提示
+        if (prev && prev.level && d.company.level > prev.level) {
+          S.notify("🏆 公司升级！", "「" + d.company.name + "」Lv." + d.company.level + " 达成！", { icon: "star", type: "milestone", important: true });
+          showToast({ title: "🏆 公司升级！", body: "「" + d.company.name + "」Lv." + d.company.level + " 达成，继续加油！", important: true });
+          addPM("🎉 恭喜老板！公司升级为「" + d.company.name + "」（Lv." + d.company.level + "）！这是里程碑时刻，团队士气高涨！");
+          SFX.play("bigWin");
+          // 全办公室迸发庆祝粒子
+          try {
+            if (window.Game) {
+              const Ss = S.get();
+              Ss.employees.forEach((emp, i) => {
+                const st = Game.stationPos(i);
+                Game.spawnBurst({ x: st.x, y: st.y });
+              });
+            }
+          } catch (e) {}
+        }
       }
     } catch (e) {}
   }

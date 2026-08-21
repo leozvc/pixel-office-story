@@ -543,9 +543,13 @@ window.UI = (function () {
     const tplBtn = document.createElement("button");
     tplBtn.className = "btn gray"; tplBtn.textContent = "📌 模板";
     tplBtn.addEventListener("click", renderTaskTemplates);
+    const achBtn = document.createElement("button");
+    achBtn.className = "btn gold"; achBtn.textContent = "🏆 成就";
+    achBtn.style.cssText = "background:linear-gradient(#f2d04a,#d8a838);border:2px solid #a87e1e;color:#3b2b20";
+    achBtn.addEventListener("click", renderAchievements);
     const btnWrap = document.createElement("div");
     btnWrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
-    btnWrap.appendChild(dashBtn); btnWrap.appendChild(tplBtn); btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(projBtn); btnWrap.appendChild(addBtn);
+    btnWrap.appendChild(dashBtn); btnWrap.appendChild(achBtn); btnWrap.appendChild(tplBtn); btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(projBtn); btnWrap.appendChild(addBtn);
     top.appendChild(cnt); top.appendChild(btnWrap);
     body.appendChild(top);
 
@@ -865,6 +869,41 @@ window.UI = (function () {
       });
       body.appendChild(card);
     }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
+
+  // ---------- 成就系统 ----------
+  async function renderAchievements() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("🏆 成就"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">加载中…</div>';
+    try {
+      const d = await Bridge.getAchievements();
+      const a = d.achievements || {};
+      const unlockedIds = new Set((a.unlocked || []).map(x => x.id));
+      const all = a.all || [];
+      const total = a.total || all.length;
+      body.innerHTML = "";
+      body.appendChild(sec("🏆 成就（" + a.unlockedCount + "/" + total + "）"));
+      if (!all.length) { body.innerHTML += '<div class="notif-empty">暂无成就数据</div>'; }
+      for (const ach of all) {
+        const unlocked = unlockedIds.has(ach.id);
+        body.innerHTML += `<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:6px;background:${unlocked ? "#2a6a4f" : "#4a3520"};border:1px solid ${unlocked ? "#5fbf8f" : "#1a120a"};border-radius:5px">
+          <div style="font-size:22px;flex-shrink:0">${unlocked ? esc(ach.icon||"🏆") : "🔒"}</div>
+          <div style="flex:1">
+            <div style="font-weight:bold;font-size:13px;color:${unlocked ? "#cfe8da" : "#b0a080"}">${esc(ach.name||"")}</div>
+            <div style="font-size:11px;color:${unlocked ? "#9fe8cf" : "#8a6f52"}">${esc(ach.desc||"")}</div>
+          </div>
+          ${unlocked ? '<span style="color:#f2d04a;font-size:11px;flex-shrink:0">✓ 已解锁</span>' : ""}
+        </div>`;
+      }
+    } catch (e) { body.innerHTML += '<div class="notif-empty">读取失败：' + esc(e.message||"") + "</div>"; }
     const back = document.createElement("button");
     back.className = "btn gray"; back.textContent = "← 返回看板";
     back.style.cssText = "margin-top:12px;width:100%";
@@ -1261,5 +1300,5 @@ window.UI = (function () {
     } catch (e) { return false; }
   }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany, claimDaily };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, renderAchievements, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany, claimDaily };
 })();

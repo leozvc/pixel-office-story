@@ -244,6 +244,11 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, Object.assign({ ok: true, claimed: r.ok }, r));
       return;
     }
+    // 成就系统视图
+    if (req.method === "GET" && pathname === "/v1/achievements") {
+      C.json(res, 200, { ok: true, achievements: C.achievementsView() });
+      return;
+    }
     // 公司等级/里程碑视图
     if (req.method === "GET" && pathname === "/v1/company") {
       C.json(res, 200, { ok: true, company: C.companyView() });

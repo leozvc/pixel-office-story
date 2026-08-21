@@ -408,4 +408,46 @@ function companyView() {
   return { level: tier.level, name: tier.name, emoji: tier.emoji, doneTasks: done, totalTasks: total, funds, next, nextProgress: next ? { tasksPct: Math.min(100, Math.round(done / next.minTasks * 100)), fundsPct: Math.min(100, Math.round(funds / next.minFunds * 100)) } : null };
 }
 
-module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, companyView, loadReports, saveReport, dailyBonus, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, DAILY_BONUS, server: undefined };
+// ---------- 成就系统 ----------
+const ACHIEVEMENTS = [
+  { id: "first_task", icon: "🚀", name: "初次开工", desc: "完成第一个任务", test: s => s.doneTasks >= 1 },
+  { id: "task_10", icon: "📋", name: "勤勉的团队", desc: "累计完成 10 个任务", test: s => s.doneTasks >= 10 },
+  { id: "task_25", icon: "🏆", name: "高效产出", desc: "累计完成 25 个任务", test: s => s.doneTasks >= 25 },
+  { id: "task_50", icon: "💎", name: "产能爆表", desc: "累计完成 50 个任务", test: s => s.doneTasks >= 50 },
+  { id: "hire_first", icon: "🤝", name: "招兵买马", desc: "雇佣第一名员工", test: s => s.empCount >= 1 },
+  { id: "hire_5", icon: "👥", name: "五人小团队", desc: "拥有 5 名员工", test: s => s.empCount >= 5 },
+  { id: "hire_10", icon: "🏭", name: "大公司", desc: "拥有 10 名员工", test: s => s.empCount >= 10 },
+  { id: "funds_10k", icon: "💰", name: "第一桶金", desc: "公司资金达到 10,000", test: s => s.funds >= 10000 },
+  { id: "funds_50k", icon: "🏦", name: "财源滚滚", desc: "公司资金达到 50,000", test: s => s.funds >= 50000 },
+  { id: "level_2", icon: "🏢", name: "公司成立", desc: "公司升级到株式会社", test: s => s.level >= 2 },
+  { id: "level_3", icon: "🏙️", name: "集团崛起", desc: "公司升级到控股集团", test: s => s.level >= 3 },
+  { id: "level_4", icon: "🏆", name: "上市梦", desc: "公司升级到上市集团", test: s => s.level >= 4 },
+  { id: "revise_first", icon: "🔄", name: "精益求精", desc: "给任务提过一次反馈", test: s => s.reviseCount >= 1 },
+  { id: "revise_5", icon: "✨", name: "追求完美", desc: "累计修订 5 个任务", test: s => s.reviseCount >= 5 },
+  { id: "project_1", icon: "📁", name: "项目管理", desc: "创建第一个项目分类", test: s => s.projectCount >= 1 },
+  { id: "daily_3", icon: "📅", name: "坚持打卡", desc: "连续签到 3 天", test: s => s.dailyStreak >= 3 },
+  { id: "report_first", icon: "📋", name: "周报起步", desc: "生成第一份项目周报", test: s => s.reportCount >= 1 },
+];
+// 成就视图：根据当前状态计算已解锁/未解锁
+function achievementsView() {
+  const k = loadKanban();
+  const es = loadEmployees();
+  const e = loadEconomy();
+  const done = k.tasks.filter(t => t.status === "done").length;
+  const empCount = es.length;
+  const funds = e.funds || START_FUNDS;
+  let level = 1;
+  try { level = companyView().level; } catch (err) {}
+  const reviseCount = k.tasks.filter(t => t.feedback && t.feedback.length).length;
+  const projectCount = new Set(k.tasks.map(t => (t.project || "").trim()).filter(Boolean)).size;
+  const dailyStreak = e.streak || 0;
+  const reportCount = loadReports().length;
+  const state = { doneTasks: done, empCount, funds, level, reviseCount, projectCount, dailyStreak, reportCount };
+  const unlocked = [];
+  for (const a of ACHIEVEMENTS) {
+    try { if (a.test(state)) unlocked.push(a); } catch (err) {}
+  }
+  return { unlockedCount: unlocked.length, total: ACHIEVEMENTS.length, unlocked, all: ACHIEVEMENTS, state };
+}
+
+module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, companyView, loadReports, saveReport, dailyBonus, achievementsView, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, DAILY_BONUS, server: undefined };

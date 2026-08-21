@@ -18,12 +18,36 @@ C.ensureDirs();
 
 // 任务执行调度：把 todo 任务交给员工执行（顺序，避免并发混乱）
 let dispatching = new Set(); // 正在执行的任务 id，避免重复派发
+// 智能分配：根据任务标题/描述关键词推断最适合的岗位，匹配对应角色的员工
+function smartAssignees(task, es) {
+  const text = ((task.title || "") + " " + (task.desc || ""));
+  const roleGuess =
+    /登录|页面|界面|UI|前端|代码|开发|后端|实现|功能|接口|脚本/.test(text) ? "dev"
+    : /画|美术|设计|配色|像素|图标|海报|视觉|角色|吉祥物/.test(text) ? "art"
+    : /测试|bug|回归|验证|质量|用例|验收/.test(text) ? "qa"
+    : /文案|运营|宣传|推广|活动|营销|市场|社群|用户|品牌|口号|slogan/.test(text) ? "ops"
+    : null;
+  if (roleGuess) {
+    const matched = es.filter(e => e.role === roleGuess && e.status !== "working");
+    if (matched.length) return matched;
+  }
+  // 回退：任何空闲员工
+  return es.filter(e => e.role !== "pm" && e.status !== "working");
+}
 async function dispatchTask(task, opts) {
   // 若已在执行则跳过
   if (dispatching.has(task.id)) return;
   const revise = opts && opts.revise ? { feedback: opts.feedback || "", originalOutput: opts.originalOutput || task.output || "" } : null;
   const es = C.loadEmployees();
-  const assignees = task.assigneeIds.length ? task.assigneeIds.map(id => es.find(e => e.id === id)).filter(Boolean) : es.filter(e => e.role !== "pm" && e.id !== undefined).slice(0, 1);
+  // 指定了员工则用指定员工；否则智能匹配岗位
+  const assignees = task.assigneeIds.length ? task.assigneeIds.map(id => es.find(e => e.id === id)).filter(Boolean) : smartAssignees(task, es).slice(0, 1);
+  // 记录实际分配到的员工（供看板/汇报展示）
+  if (!task.assigneeIds.length && assignees.length) {
+    task.assigneeIds = assignees.map(e => e.id);
+    const kb0 = C.loadKanban();
+    const kbTask0 = kb0.tasks.find(x => x.id === task.id);
+    if (kbTask0) { kbTask0.assigneeIds = task.assigneeIds; kbTask0.assign = assignees.map(e => e.name); C.saveKanban(kb0); }
+  }
   if (!assignees.length) {
     // 无可用员工：保持 todo 并提示，等自动推进重试
     const k = C.loadKanban();

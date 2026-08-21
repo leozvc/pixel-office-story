@@ -304,10 +304,11 @@ window.UI = (function () {
         card.className = "task-card";
         card.style.cssText = "background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:8px;margin-bottom:8px;cursor:pointer";
         const stTxt = { todo: "待办", doing: "执行中", done: "已完成" }[t.status];
+        const stageTxt = { planning: "计划中", executing: "执行中", polishing: "完善中", done: "已完成" }[t.stage] || "";
         card.innerHTML = `<div style="font-weight:bold;font-size:13px">${esc(t.title)}</div>
           <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((t.assign||[]).join("、") || "待定")}</div>
           <div style="font-size:11px;color:#8a6f52;margin-top:2px;word-break:break-all">工作区：${esc(t.workspace||"")}</div>
-          <div style="font-size:11px;margin-top:6px">${t.status === "done" ? '<span style="color:#5fbf8f">✅ 已完成</span>' : t.status === "doing" ? '<span style="color:#f2d04a">⏳ 执行中</span>' : '<span style="color:#cfe0ff">待办</span>'}</div>`;
+          <div style="font-size:11px;margin-top:6px">${t.status === "done" ? '<span style="color:#5fbf8f">✅ 已完成</span>' : t.status === "doing" ? '<span style="color:#f2d04a">⏳ ' + esc(stageTxt||"执行中") + '</span>' : '<span style="color:#cfe0ff">待办</span>'}</div>`;
         card.addEventListener("click", () => openTaskDetail(t.id));
         colDiv.appendChild(card);
       }

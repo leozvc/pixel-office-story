@@ -162,11 +162,15 @@ window.Game = (function () {
 
   function drawEmployees() {
     const emps = S.get().employees;
+    const now = performance.now();
     emps.forEach((emp, i) => {
       const st = stationPos(i);
       const chr = Sp.makeCharacter(roleColors(emp.role));
+      const busy = emp.status === "working" || emp.status === "running";
+      // 忙碌动画：轻微上下浮动（工作中的员工有节奏感）
+      const bob = busy ? Math.sin(now / 300 + i * 1.5) * 2 : 0;
       const img = chr.idle;
-      g.drawImage(img, st.x - 8, st.y - 38, 16, 20);
+      g.drawImage(img, st.x - 8, st.y - 38 + bob, 16, 20);
       // 工位桌
       g.fillStyle = "#8a6a42"; g.fillRect(st.x - 18, st.y + 4, 36, 6);
       // 名字
@@ -178,12 +182,25 @@ window.Game = (function () {
       g.lineWidth = 2;
       g.strokeText(nm.length > 4 ? nm.slice(0, 4) : nm, st.x, st.y + 18);
       g.fillText(nm.length > 4 ? nm.slice(0, 4) : nm, st.x, st.y + 18);
-      // 状态点
-      const busy = emp.status === "working" || emp.status === "running";
+      // 状态点（工作中的员工显示闪烁的忙碌指示灯）
       g.fillStyle = busy ? "#3d8b6f" : "#c8b8a0";
       g.fillRect(st.x - 18, st.y - 42, 8, 3);
-      g.fillStyle = busy ? "#5fbf8f" : "#999";
-      g.fillRect(st.x - 18, st.y - 42, busy ? 8 : 3, 3);
+      if (busy) {
+        // 闪烁指示
+        g.fillStyle = Math.sin(now / 200) > 0 ? "#5fbf8f" : "#2a6a4f";
+        g.fillRect(st.x - 18, st.y - 42, 8, 3);
+      } else {
+        g.fillStyle = "#999";
+        g.fillRect(st.x - 18, st.y - 42, 3, 3);
+      }
+      // 工作中的员工头顶小气泡（省略号）
+      if (busy) {
+        g.fillStyle = "rgba(255,255,255,0.9)";
+        g.beginPath(); g.arc(st.x, st.y - 46, 3, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#222";
+        g.font = "6px sans-serif";
+        g.fillText("···", st.x, st.y - 45);
+      }
     });
   }
 

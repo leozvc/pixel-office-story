@@ -51,10 +51,15 @@ async function dispatchTask(task) {
     task.dispatchedAt = Date.now();
     for (const e of assignees) { e.status = "working"; }
     C.saveEmployees(es);
-    // 实际执行（取第一个员工执行）
+    // 实际执行（取第一个员工执行），实时回写执行阶段
     const emp = assignees[0];
+    const setStage = (stage) => {
+      const k = C.loadKanban();
+      const t = k.tasks.find(x => x.id === task.id);
+      if (t) { t.stage = stage; t.status = stage === "done" ? "done" : "doing"; t.updatedAt = Date.now(); C.saveKanban(k); }
+    };
     try {
-      const out = await C.executeTask(emp, task);
+      const out = await C.executeTask(emp, task, setStage);
       const k = C.loadKanban();
       const t = k.tasks.find(x => x.id === task.id);
       if (t) {

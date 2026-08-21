@@ -145,10 +145,24 @@
   UI.init();
 
   // 周期同步真实员工/任务状态（已连接时）
+  // 同时让 PM 主动汇报新完成任务
+  var pmDoneSeen = {}; // 记录已汇报过的完成任务 id
   setInterval(function () {
     if (window.Bridge && Bridge.isConfigured() && window.PM && !UI.syncing) {
       UI.syncing = true;
-      PM.syncFromBridge().catch(function () {}).then(function () { UI.syncing = false; });
+      PM.syncFromBridge().then(function (s) {
+        // PM 主动汇报新完成任务
+        if (s && s.tasks) {
+          var newlyDone = s.tasks.filter(function (t) {
+            return t.status === "done" && !pmDoneSeen[t.id] && (t.output || "").length > 0;
+          });
+          for (var i = 0; i < newlyDone.length; i++) {
+            pmDoneSeen[newlyDone[i].id] = true;
+            var t = newlyDone[i];
+            UI.addPM("【进度】老板，「" + t.title + "」已完成！产出已写入工作区，可在任务看板查看。");
+          }
+        }
+      }).catch(function () {}).then(function () { UI.syncing = false; });
     }
   }, 15000);
 

@@ -56,6 +56,13 @@ window.UI = (function () {
       refreshCompany().catch(() => {});
       startNotifPolling();
     }
+    // 启动画面公司状态
+    const bco = $("boot-company");
+    if (bco) {
+      const Ss = S.get();
+      const comp = Ss.company ? (Ss.company.emoji + " " + Ss.company.name + " Lv." + Ss.company.level) : "🏠 像素软件株式会社";
+      bco.innerHTML = `${esc(comp)}<br><span class="bco-emp">👥 ${Ss.employees.length} 员工</span> · <span class="bco-task">📋 ${Ss.tasks.length} 任务</span>${Ss.funds != null ? ' · 💰 ' + fmt(Ss.funds) : ""}`;
+    }
   }
 
   function greetingText() {

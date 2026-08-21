@@ -238,6 +238,12 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true, economy: C.economyView() });
       return;
     }
+    // 每日登录奖励（每天首次调用发放）
+    if (req.method === "GET" && pathname === "/v1/daily") {
+      const r = C.dailyBonus();
+      C.json(res, 200, Object.assign({ ok: true, claimed: r.ok }, r));
+      return;
+    }
     // 公司等级/里程碑视图
     if (req.method === "GET" && pathname === "/v1/company") {
       C.json(res, 200, { ok: true, company: C.companyView() });

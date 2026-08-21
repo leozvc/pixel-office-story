@@ -302,6 +302,26 @@ const START_FUNDS = 5000;
 const HIRE_COST = { dev: 1000, art: 1200, qa: 800, ops: 900 };
 const REWARD = { high: 800, medium: 500, low: 300 }; // 任务完成奖励（按优先级）
 const FAIL_PENALTY = 200; // 任务失败扣款
+const DAILY_BONUS = 200; // 每日登录奖励
+
+// 每日登录奖励：每天首次调用发放；返回 { ok, amount, streak, msg } 或 { ok:false, msg }
+function dailyBonus() {
+  const e = loadEconomy();
+  const today = new Date().toISOString().slice(0, 10);
+  const last = e.lastBonusDay || "";
+  if (last === today) return { ok: false, msg: "今日已领过" };
+  // 连续签到：昨天签到则连击+1，否则重置为1
+  const yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const streak = (e.lastBonusDay === yest) ? ((e.streak || 0) + 1) : 1;
+  // 连续签到加成：连续3天以上额外+100
+  const extra = streak >= 3 ? 100 : 0;
+  const amount = DAILY_BONUS + extra;
+  e.lastBonusDay = today;
+  e.streak = streak;
+  saveEconomy(e);
+  recordEconomy("income", amount, `每日登录奖励（连续${streak}天）`);
+  return { ok: true, amount, streak, msg: `每日登录 +${amount}（连续 ${streak} 天）` };
+}
 
 function loadEconomy() {
   return readJSON(ECONOMY_FILE, { funds: START_FUNDS, ledger: [] });
@@ -388,4 +408,4 @@ function companyView() {
   return { level: tier.level, name: tier.name, emoji: tier.emoji, doneTasks: done, totalTasks: total, funds, next, nextProgress: next ? { tasksPct: Math.min(100, Math.round(done / next.minTasks * 100)), fundsPct: Math.min(100, Math.round(funds / next.minFunds * 100)) } : null };
 }
 
-module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, companyView, loadReports, saveReport, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, server: undefined };
+module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, companyView, loadReports, saveReport, dailyBonus, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, DAILY_BONUS, server: undefined };

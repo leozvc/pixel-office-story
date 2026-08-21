@@ -119,6 +119,21 @@ window.UI = (function () {
     bootEl.classList.add("hide"); bootDone = true;
     setTimeout(() => { try { bootEl.style.display = "none"; } catch (e) {} }, 500);
     setTimeout(() => addPM(greetingText()), 400);
+    // 每日登录奖励
+    setTimeout(() => claimDaily(), 1200);
+  }
+  // 每日签到领奖
+  async function claimDaily() {
+    if (!window.Bridge || !Bridge.isConfigured()) return;
+    try {
+      const d = await Bridge.getDaily();
+      if (d && d.ok && d.claimed) {
+        showToast({ title: "🎁 每日签到", body: "获得资金 +" + d.amount + (d.streak > 1 ? "（连续 " + d.streak + " 天）" : ""), important: true });
+        SFX.play("coin");
+        addPM("🎁 老板，每日签到奖励 " + d.amount + " 元已到账！" + (d.streak > 1 ? " 已连续签到 " + d.streak + " 天，再接再厉！" : " 明天继续签到有额外奖励哦！"));
+        await refreshFunds().catch(() => {});
+      }
+    } catch (e) {}
   }
 
   function sendChat() {
@@ -1246,5 +1261,5 @@ window.UI = (function () {
     } catch (e) { return false; }
   }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany, claimDaily };
 })();

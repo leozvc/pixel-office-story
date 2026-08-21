@@ -73,7 +73,24 @@ async function dispatchTask(task) {
     } catch (e) {
       const k = C.loadKanban();
       const t = k.tasks.find(x => x.id === task.id);
-      if (t) { t.output = "（执行失败：" + e.message + "）"; t.status = "done"; t.updatedAt = Date.now(); C.saveKanban(k); }
+      if (t) {
+        const retries = (t.retries || 0) + 1;
+        // 首次失败自动重试一次；仍失败则标记 failed 并给出可读提示
+        if (retries <= 1) {
+          t.retries = retries;
+          t.output = "（首次执行失败，正在重试…）" + e.message;
+          t.stage = "retrying";
+          C.saveKanban(k);
+          // 延迟后重新派发
+          setTimeout(() => { queueDispatch(t); }, 3000);
+          return;
+        }
+        t.output = "（执行失败：" + e.message + "）\n建议：检查 DSH/LLM 服务是否可用，或稍后在任务详情点击「重新执行」重试。";
+        t.status = "failed";
+        t.stage = "failed";
+        t.updatedAt = Date.now();
+        C.saveKanban(k);
+      }
     }
     // 复位员工状态
     for (const e of assignees) e.status = "idle";

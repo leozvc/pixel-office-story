@@ -270,7 +270,7 @@ window.UI = (function () {
   function sec(text) { const d = document.createElement("div"); d.className = "section-title"; d.textContent = text; return d; }
 
   // ---------- 任务看板（多列） ----------
-  const COLS = [ { id: "todo", name: "待办" }, { id: "doing", name: "执行中" }, { id: "done", name: "已完成" } ];
+  const COLS = [ { id: "todo", name: "待办" }, { id: "doing", name: "执行中" }, { id: "failed", name: "失败" }, { id: "done", name: "已完成" } ];
   function renderKanban() {
     const Ss = S.get();
     const body = $("panel-tasks").querySelector(".panel-body");
@@ -303,12 +303,16 @@ window.UI = (function () {
         const card = document.createElement("div");
         card.className = "task-card";
         card.style.cssText = "background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:8px;margin-bottom:8px;cursor:pointer";
-        const stTxt = { todo: "待办", doing: "执行中", done: "已完成" }[t.status];
-        const stageTxt = { planning: "计划中", executing: "执行中", polishing: "完善中", done: "已完成" }[t.stage] || "";
+        const stTxt = { todo: "待办", doing: "执行中", done: "已完成", failed: "失败" }[t.status];
+        const stageTxt = { planning: "计划中", executing: "执行中", polishing: "完善中", retrying: "重试中", failed: "失败", done: "已完成" }[t.stage] || "";
+        const statusHtml = t.status === "done" ? '<span style="color:#5fbf8f">✅ 已完成</span>'
+          : t.status === "failed" ? '<span style="color:#e06c5a">❌ 失败</span>'
+          : t.status === "doing" ? '<span style="color:#f2d04a">⏳ ' + esc(stageTxt||"执行中") + '</span>'
+          : '<span style="color:#cfe0ff">待办</span>';
         card.innerHTML = `<div style="font-weight:bold;font-size:13px">${esc(t.title)}</div>
           <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((t.assign||[]).join("、") || "待定")}</div>
           <div style="font-size:11px;color:#8a6f52;margin-top:2px;word-break:break-all">工作区：${esc(t.workspace||"")}</div>
-          <div style="font-size:11px;margin-top:6px">${t.status === "done" ? '<span style="color:#5fbf8f">✅ 已完成</span>' : t.status === "doing" ? '<span style="color:#f2d04a">⏳ ' + esc(stageTxt||"执行中") + '</span>' : '<span style="color:#cfe0ff">待办</span>'}</div>`;
+          <div style="font-size:11px;margin-top:6px">${statusHtml}</div>`;
         card.addEventListener("click", () => openTaskDetail(t.id));
         colDiv.appendChild(card);
       }
@@ -368,12 +372,12 @@ window.UI = (function () {
     const body = $("panel-taskdetail").querySelector(".panel-body");
     const t = S.get().tasks.find(x => x.id === taskDetailId);
     if (!t) { body.innerHTML = '<div class="notif-empty">任务不存在</div>'; return; }
-    const stTxt = { todo: "待办", doing: "执行中", done: "已完成" }[t.status] || t.status;
+    const stTxt = { todo: "待办", doing: "执行中", done: "已完成", failed: "失败" }[t.status] || t.status;
     body.innerHTML = "";
     body.appendChild(sec("任务详情"));
     body.innerHTML += `
       <div style="font-size:15px;font-weight:bold;margin-bottom:6px">${esc(t.title)}</div>
-      <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)} · 负责人：${esc((t.assign||[]).join("、")||"待定")}</div>
+      <div style="font-size:12px;color:#b0a080;margin-bottom:6px">状态：${esc(stTxt)}${t.stage ? " · " + esc({planning:"计划中",executing:"执行中",polishing:"完善中",retrying:"重试中",failed:"失败",done:"已完成"}[t.stage]||t.stage) : ""} · 负责人：${esc((t.assign||[]).join("、")||"待定")}</div>
       <div class="section-title">任务描述</div>
       <div style="font-size:12px;white-space:pre-wrap;color:#6e5f50;margin-bottom:8px">${esc(t.desc||"(无描述)")}</div>
       <div class="section-title">工作区目录</div>
@@ -382,11 +386,10 @@ window.UI = (function () {
       <div style="font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:8px;border-radius:4px;max-height:180px;overflow-y:auto;margin-bottom:8px">${esc(t.output||"(尚未产出)")}</div>`;
     const btn = document.createElement("button");
     btn.className = "btn " + (t.status === "done" ? "gray" : "green");
-    btn.textContent = t.status === "done" ? "重新执行" : "立即执行";
+    btn.textContent = t.status === "done" ? "重新执行" : (t.status === "failed" ? "重试" : "立即执行");
     btn.addEventListener("click", async () => {
       try {
-        if (t.status !== "done") { await Bridge.dispatchTask(t.id); S.notify("已开始执行", t.title, { icon: "flag", type: "task" }); }
-        else { await Bridge.dispatchTask(t.id); S.notify("重新执行", t.title, { icon: "flag", type: "task" }); }
+        await Bridge.dispatchTask(t.id); S.notify("已安排执行", t.title, { icon: "flag", type: "task" });
         closeAllPanels(); addPM("已安排执行「" + t.title + "」。"); await PM.syncFromBridge().catch(() => {});
       } catch (e) { addPM("执行失败：" + (e.message||"")); }
     });

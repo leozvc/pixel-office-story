@@ -81,7 +81,13 @@ const PORT = parseInt(process.argv[2] || "9231", 10);
   check("财务面板渲染", await one("(function(){ GState.load(); return UI.renderEconomy().then(function(){ return document.getElementById('panel-tasks').innerText.includes('公司财务'); }).catch(function(){ return false; }); })()"));
   check("资金流水区", await one("(function(){ GState.load(); return UI.renderEconomy().then(function(){ return document.getElementById('panel-tasks').innerText.includes('资金流水'); }).catch(function(){ return false; }); })()"));
 
-  console.log("\n== 10. JS 异常 ==");
+  console.log("\n== 10. 成就系统 ==");
+  check("成就面板渲染", await one("(function(){ GState.load(); return UI.renderAchievements().then(function(){ return document.getElementById('panel-tasks').innerText.includes('成就'); }).catch(function(){ return false; }); })()"));
+
+  console.log("\n== 11. 任务模板 ==");
+  check("模板面板渲染", await one("(function(){ GState.load(); return UI.renderTaskTemplates().then(function(){ return document.getElementById('panel-tasks').innerText.includes('任务模板'); }).catch(function(){ return false; }); })()"));
+
+  console.log("\n== 12. JS 异常 ==");
   check("无未捕获异常", exc.length === 0);
   if (exc.length) exc.forEach(e => console.log("   ", e));
 

@@ -37,6 +37,11 @@ window.UI = (function () {
       b.addEventListener("click", () => { el.chatInput.value = c; sendChat(); });
       el.quickRow.appendChild(b);
     }
+    // 快捷入口：项目周报（直接打开周报面板）
+    const repChip = document.createElement("button");
+    repChip.className = "quick-chip"; repChip.textContent = "📋 项目周报";
+    repChip.addEventListener("click", () => { openPanel("tasks"); renderWeeklyReport(); });
+    el.quickRow.appendChild(repChip);
     document.querySelectorAll(".panel-overlay").forEach(o => { o.addEventListener("click", e => { if (e.target === o) closeAllPanels(); }); });
     document.querySelectorAll(".panel .close").forEach(b => { b.addEventListener("click", closeAllPanels); });
     S.on(renderHUD);
@@ -51,7 +56,7 @@ window.UI = (function () {
   }
 
   function greetingText() {
-    return "老板好！我是项目经理佐藤美咲。本版本已接入真实 DeepSeek harness，员工都是真实 AI agent，任务走任务看板统一管理。\n\n你可以：\n· 说「招个程序员/美术/测试/运营」雇佣员工\n· 说「帮我安排一个任务：…」创建任务（自动分配独立工作区）\n· 点 🎤 语音直接跟我说话\n· 点 📋 看任务看板进度\n· 说「汇报进度」查看所有任务状态\n\n先点右上角 ⚡ 连接任务编排服务。";
+    return "老板好！我是项目经理佐藤美咲。本版本已接入真实 DeepSeek harness，员工都是真实 AI agent，任务走任务看板统一管理。\n\n你可以：\n· 说「招个程序员/美术/测试/运营」雇佣员工\n· 说「帮我安排一个任务：…」创建任务（自动拆解子任务并执行）\n· 任务交付后可给员工提反馈，员工会自动修订再交付\n· 点 🎤 语音直接跟我说话\n· 点 📋 看任务看板 / 生成周报 / 查看统计\n· 说「汇报进度」查看所有任务状态\n\n先点右上角 ⚡ 连接任务编排服务。";
   }
   function startBoot() {
     SFX.init(); SFX.play("open"); SFX.startBGM();

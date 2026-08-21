@@ -5,6 +5,7 @@ window.UI = (function () {
   let bootDone = false;
   let notifCursor = 0;
   let taskDetailId = null;
+  let flowHideTimer = null;
   const $ = id => document.getElementById(id);
 
   function init() {
@@ -144,6 +145,11 @@ window.UI = (function () {
       if (i === idx) { s.classList.add("on"); if (label) s.querySelector(".fs-lb").textContent = label; }
     });
     scrollChat();
+    // 到达"完成"后延迟自动隐藏（保留完成态展示约 3 秒）
+    if (name === "done") {
+      clearTimeout(flowHideTimer);
+      flowHideTimer = setTimeout(flowReset, 3000);
+    }
   }
   function flowReset() {
     const pipe = $("flow-pipe");

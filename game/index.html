@@ -173,7 +173,7 @@
           for (var i = 0; i < newlyDone.length; i++) {
             pmDoneSeen[newlyDone[i].id] = true;
             var t = newlyDone[i];
-            UI.addPM("【进度】老板，「" + t.title + "」已完成！产出已写入工作区，可在任务看板查看。");
+            UI.addPM("【进度】老板，「" + t.title + "」已完成！" + (t.reward ? "获得资金 +" + t.reward + "。" : "") + "产出已写入工作区，可在任务看板查看。");
             // 流程可视化：若有进行中的流程管道，标记完成
             try { if (UI.flowStep) UI.flowStep("done", "完成"); } catch (e) {}
             // 办公室庆祝：在负责员工工位迸发粒子 + 气泡

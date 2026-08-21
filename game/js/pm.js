@@ -21,6 +21,7 @@ window.PM = (function () {
         project: t.project || "",
         subtasks: t.subtasks || [], currentSubtask: t.currentSubtask || "",
         feedback: t.feedback || [], revising: t.stage === "revising",
+        reward: t.reward || 0,
       }));
       Ss.connected = true;
       Ss.lastSync = Date.now();

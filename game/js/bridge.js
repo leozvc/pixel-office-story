@@ -77,7 +77,8 @@ window.Bridge = (function () {
 
   // ---- 任务看板 ----
   async function listTasks() { return await req("/v1/tasks", "GET", null, settings.token); }
-  async function createTask(title, desc, assign, workspace, priority) { return await req("/v1/tasks", "POST", { title, desc, assign, workspace, priority }, settings.token); }
+  async function listProjects() { return await req("/v1/projects", "GET", null, settings.token); }
+  async function createTask(title, desc, assign, workspace, priority, project) { return await req("/v1/tasks", "POST", { title, desc, assign, workspace, priority, project }, settings.token); }
   async function dispatchTask(id) { return await req("/v1/tasks/dispatch", "POST", { id }, settings.token); }
   async function setTaskStatus(id, status) { return await req("/v1/tasks/status", "POST", { id, status }, settings.token); }
   async function setTaskPriority(id, priority) { return await req("/v1/tasks/status", "POST", { id, priority }, settings.token); }
@@ -143,7 +144,7 @@ window.Bridge = (function () {
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
-    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats, getEconomy,
+    listTasks, listProjects, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats, getEconomy,
     pmChat, pmReport, pmSuggest, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };

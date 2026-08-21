@@ -219,6 +219,21 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true, tasks: k.tasks.map(t => ({ ...t, history: undefined })) });
       return;
     }
+    // 项目聚合（按 project 字段分组，统计各项目进度）
+    if (req.method === "GET" && pathname === "/v1/projects") {
+      const k = C.loadKanban();
+      const byProj = {};
+      for (const t of k.tasks) {
+        const key = (t.project || "").trim() || "未分类";
+        if (!byProj[key]) byProj[key] = { name: key, total: 0, done: 0, doing: 0, todo: 0, failed: 0, tasks: [] };
+        byProj[key].total++;
+        byProj[key][t.status === "done" ? "done" : t.status === "doing" ? "doing" : t.status === "failed" ? "failed" : "todo"]++;
+        byProj[key].tasks.push({ id: t.id, title: t.title, status: t.status, priority: t.priority });
+      }
+      const projects = Object.values(byProj).map(p => ({ ...p, pct: p.total ? Math.round((p.done / p.total) * 100) : 0 })).sort((a, b) => b.total - a.total);
+      C.json(res, 200, { ok: true, projects });
+      return;
+    }
     if (req.method === "POST" && pathname === "/v1/tasks") {
       const b = await C.readBody(req);
       const { title, desc, assign, workspace } = b;
@@ -226,7 +241,8 @@ const server = http.createServer(async (req, res) => {
       const taskId = "task-" + Date.now() + "-" + Math.floor(Math.random() * 999);
       const ws = workspace || path.join(C.WORKSPACE_ROOT, "tasks", taskId);
       const priority = b.priority && ["high", "medium", "low"].includes(b.priority) ? b.priority : "medium";
-      const task = { id: taskId, title, desc: desc || "", assign: Array.isArray(assign) ? assign : [], assigneeIds: [], workspace: ws, status: "todo", priority, createdAt: Date.now(), updatedAt: Date.now(), output: "", outputFiles: [] };
+      const project = (b.project || "").toString().trim().slice(0, 30);
+      const task = { id: taskId, title, desc: desc || "", assign: Array.isArray(assign) ? assign : [], assigneeIds: [], workspace: ws, status: "todo", priority, project, createdAt: Date.now(), updatedAt: Date.now(), output: "", outputFiles: [] };
       const es = C.loadEmployees();
       for (const name of task.assign) { const e = es.find(x => x.name === name || x.roleName === name); if (e) task.assigneeIds.push(e.id); }
       const k = C.loadKanban(); k.tasks.push(task); C.saveKanban(k);

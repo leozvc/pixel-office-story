@@ -377,6 +377,7 @@ window.UI = (function () {
 
   // ---------- 任务看板（多列） ----------
   const COLS = [ { id: "todo", name: "待办" }, { id: "doing", name: "执行中" }, { id: "failed", name: "失败" }, { id: "done", name: "已完成" } ];
+  let projFilter = ""; // 项目筛选（空 = 全部）
   function renderKanban() {
     const Ss = S.get();
     const body = $("panel-tasks").querySelector(".panel-body");
@@ -402,11 +403,26 @@ window.UI = (function () {
     const suggestBtn = document.createElement("button");
     suggestBtn.className = "btn blue"; suggestBtn.textContent = "💡 建议";
     suggestBtn.addEventListener("click", renderPmSuggest);
+    const projBtn = document.createElement("button");
+    projBtn.className = "btn gray"; projBtn.textContent = "📁 项目";
+    projBtn.addEventListener("click", renderProjects);
     const btnWrap = document.createElement("div");
     btnWrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
-    btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(addBtn);
+    btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(projBtn); btnWrap.appendChild(addBtn);
     top.appendChild(cnt); top.appendChild(btnWrap);
     body.appendChild(top);
+
+    // 项目筛选行
+    const filterRow = document.createElement("div");
+    filterRow.style.cssText = "display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:12px;color:#b0a080";
+    filterRow.innerHTML = "<span>项目：</span>";
+    const sel = document.createElement("select");
+    sel.style.cssText = "flex:1;background:#f4f1ea;color:#2f2b26;border:1px solid #c8b8a0;border-radius:4px;padding:5px;font-size:12px";
+    const projs = [...new Set(Ss.tasks.map(t => t.project || "未分类"))].sort();
+    sel.innerHTML = '<option value="">全部</option>' + projs.map(p => `<option value="${esc(p)}" ${projFilter === p ? "selected" : ""}>${esc(p)}</option>`).join("");
+    sel.addEventListener("change", () => { projFilter = sel.value; renderKanban(); });
+    filterRow.appendChild(sel);
+    body.appendChild(filterRow);
 
     const board = document.createElement("div");
     board.className = "kanban";
@@ -417,7 +433,7 @@ window.UI = (function () {
       colDiv.style.cssText = "flex:1;min-width:140px;background:#3a2a1a;border:1px solid #1a120a;border-radius:6px;padding:8px";
       const hdr = document.createElement("div");
       hdr.style.cssText = "font-weight:bold;font-size:13px;margin-bottom:8px;color:" + (col.id === "done" ? "#5fbf8f" : col.id === "doing" ? "#f2d04a" : "#cfe0ff");
-      const colTasks = Ss.tasks.filter(t => t.status === col.id)
+      const colTasks = Ss.tasks.filter(t => t.status === col.id && (!projFilter || (t.project || "未分类") === projFilter))
         .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[(a.priority||"medium")] - { high: 0, medium: 1, low: 2 }[(b.priority||"medium")]));
       hdr.textContent = col.name + " (" + colTasks.length + ")";
       colDiv.appendChild(hdr);
@@ -643,6 +659,42 @@ window.UI = (function () {
     body.appendChild(back);
   }
 
+  // ---------- 项目聚合视图 ----------
+  async function renderProjects() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("📁 项目总览"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">加载中…</div>';
+    try {
+      const d = await Bridge.listProjects();
+      const projects = d.projects || [];
+      body.innerHTML = "";
+      body.appendChild(sec("📁 项目总览（" + projects.length + "）"));
+      if (!projects.length) { body.innerHTML += '<div class="notif-empty">暂无任务，先去创建任务吧</div>'; }
+      for (const p of projects) {
+        const card = document.createElement("div");
+        card.className = "proj-card";
+        card.innerHTML = `<div class="pc-head"><span class="pc-name">${esc(p.name)}</span><span style="font-size:12px;color:${p.pct >= 100 ? "#3d8b6f" : "#f2d04a"}">${p.pct}%</span></div>
+          <div class="pc-body">
+            <div class="proj-line"><span class="lbl">进度</span><div class="proj-bar"><div style="width:${p.pct}%"></div></div><span class="proj-pct">${p.done}/${p.total}</span></div>
+            <div style="font-size:11px;color:#8a6f52;margin-top:4px">✅ ${p.done} 完成 · ⏳ ${p.doing} 执行中 · 📝 ${p.todo} 待办${p.failed ? " · ❌ " + p.failed + " 失败" : ""}</div>
+          </div>`;
+        body.appendChild(card);
+      }
+      // 快捷：点击项目卡片可筛选看板
+      body.querySelectorAll(".proj-card").forEach((c, i) => {
+        c.style.cursor = "pointer";
+        c.addEventListener("click", () => { projFilter = projects[i].name === "未分类" ? "" : projects[i].name; renderKanban(); });
+      });
+    } catch (e) { body.innerHTML += '<div class="notif-empty">读取失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
+
   // ---------- 新建任务 ----------
   function openTaskNew() {
     if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接任务编排服务。"); return; }
@@ -658,6 +710,7 @@ window.UI = (function () {
       <div class="conn-field"><label>任务描述（目标/验收标准）</label><textarea id="tnew-desc" rows="4" placeholder="描述要完成什么、产出要求"></textarea></div>
       <div class="conn-field"><label>负责人（可多选）</label><div id="tnew-assign"></div></div>
       <div class="conn-field"><label>工作区目录（可选，留空自动分配）</label><input id="tnew-ws" placeholder="/Users/.../workspace/tasks/xxx" autocomplete="off"></div>
+      <div class="conn-field"><label>项目/分类（可选，如 官网/登录页/运营）</label><input id="tnew-project" placeholder="例如：官网" autocomplete="off"></div>
       <div class="conn-field"><label>优先级</label><select id="tnew-priority" style="width:100%;background:#f4f1ea;color:#2f2b26;border:1px solid #c8b8a0;border-radius:4px;padding:6px;font-size:13px"><option value="high">🔺 高</option><option value="medium" selected>▪ 中</option><option value="low">▫ 低</option></select></div>
       <div style="display:flex;gap:8px;margin-top:10px"><button class="btn green" id="tnew-submit">创建并执行</button><button class="btn gray" id="tnew-cancel">取消</button></div>`;
     const assignBox = $("tnew-assign");
@@ -674,12 +727,13 @@ window.UI = (function () {
       const desc = $("tnew-desc").value.trim();
       const ws = $("tnew-ws").value.trim();
       const priority = $("tnew-priority") ? $("tnew-priority").value : "medium";
+      const project = $("tnew-project") ? $("tnew-project").value.trim() : "";
       if (!title) { addPM("请填写任务标题。"); return; }
       const assign = Array.from(document.querySelectorAll("#tnew-assign input:checked")).map(i => i.value);
       const btn = $("tnew-submit");
       btn.disabled = true; btn.textContent = "创建中…";
       try {
-        const d = await Bridge.createTask(title, desc, assign, ws, priority);
+        const d = await Bridge.createTask(title, desc, assign, ws, priority, project);
         S.notify("任务已创建", "「" + title + "」已加入看板并开始执行", { icon: "flag", type: "task", important: true });
         closeAllPanels();
         await PM.syncFromBridge().catch(() => {});

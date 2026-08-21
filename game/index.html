@@ -12,6 +12,7 @@
   <!-- 顶部 HUD -->
   <div id="hud">
     <div class="hud-item" id="hud-title">像素软件株式会社</div>
+    <div class="hud-item" id="hud-funds" title="公司资金" style="cursor:pointer">💰 0</div>
     <div class="hud-spacer"></div>
     <div id="hud-team" class="hud-item" style="cursor:pointer" title="团队">👥 0</div>
     <div id="hud-tasks" class="hud-item" style="cursor:pointer" title="任务看板">📋 0</div>
@@ -184,6 +185,9 @@
                 Game._showBubble(emp, "🎉 完成！");
               }
             } catch (e) {}
+          }
+          // 同步资金（任务完成会获得奖励）
+          try { UI.refreshFunds(); } catch (e) {}
           }
         }
       }).catch(function () {}).then(function () { UI.syncing = false; });

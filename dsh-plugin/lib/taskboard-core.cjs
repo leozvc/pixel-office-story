@@ -23,6 +23,7 @@ const DATA_DIR = path.join(ROOT, "data");
 const KANBAN_FILE = path.join(DATA_DIR, "kanban.json");
 const EMPLOYEES_FILE = path.join(DATA_DIR, "employees.json");
 const MEMORY_FILE = path.join(DATA_DIR, "memory.json");
+const ECONOMY_FILE = path.join(DATA_DIR, "economy.json");
 const STATE_FILE = process.env.PIXB_STATE || path.join(ROOT, "pairing.json");
 const WHISPER = process.env.PIXB_WHISPER || "/opt/homebrew/bin/whisper";
 
@@ -295,4 +296,47 @@ function transcribe(audioPath) {
 
 function localIPs() { const l = []; const ifs = os.networkInterfaces(); for (const k of Object.keys(ifs)) for (const i of ifs[k] || []) if (i.family === "IPv4" && !i.internal) l.push(i.address); return l; }
 
-module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, server: undefined };
+// ---------- 公司经济系统 ----------
+// 资金账本：完成任务获得资金，雇佣员工消耗资金
+const START_FUNDS = 5000;
+const HIRE_COST = { dev: 1000, art: 1200, qa: 800, ops: 900 };
+const REWARD = { high: 800, medium: 500, low: 300 }; // 任务完成奖励（按优先级）
+const FAIL_PENALTY = 200; // 任务失败扣款
+
+function loadEconomy() {
+  return readJSON(ECONOMY_FILE, { funds: START_FUNDS, ledger: [] });
+}
+function saveEconomy(e) { writeJSON(ECONOMY_FILE, e); }
+// 记账：type = income/expense，amount 正数为收入负数为支出
+function recordEconomy(type, amount, label) {
+  const e = loadEconomy();
+  e.funds = Math.max(0, (e.funds || START_FUNDS) + amount);
+  e.ledger.unshift({ type, amount, label, at: Date.now() });
+  if (e.ledger.length > 100) e.ledger.length = 100;
+  saveEconomy(e);
+  return e.funds;
+}
+// 任务完成奖励（按优先级）
+function rewardTask(task) {
+  const amt = REWARD[task.priority || "medium"] || REWARD.medium;
+  return recordEconomy("income", amt, `完成任务《${task.title}》`);
+}
+// 任务失败扣款
+function penalizeTask(task) {
+  return recordEconomy("expense", -FAIL_PENALTY, `任务失败《${task.title}》`);
+}
+// 雇佣扣款：返回 { ok, funds }，资金不足则 ok=false
+function chargeHire(role, name) {
+  const cost = HIRE_COST[role] || HIRE_COST.dev;
+  const e = loadEconomy();
+  if (e.funds < cost) return { ok: false, cost, funds: e.funds };
+  const funds = recordEconomy("expense", -cost, `雇佣${name}(${role})`);
+  return { ok: true, cost, funds };
+}
+// 经济视图（供前端）
+function economyView() {
+  const e = loadEconomy();
+  return { funds: e.funds || START_FUNDS, ledger: e.ledger.slice(0, 30), hireCost: HIRE_COST, reward: REWARD };
+}
+
+module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, server: undefined };

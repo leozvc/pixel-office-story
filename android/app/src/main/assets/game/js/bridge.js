@@ -92,6 +92,8 @@ window.Bridge = (function () {
   async function getMemory() { return await req("/v1/memory", "GET", null, settings.token); }
   // 数据统计
   async function getStats() { return await req("/v1/stats", "GET", null, settings.token); }
+  // 公司经济
+  async function getEconomy() { return await req("/v1/economy", "GET", null, settings.token); }
 
   // ---- PM 对话 ----
   async function pmChat(messages, team, tasks) {
@@ -141,7 +143,7 @@ window.Bridge = (function () {
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
-    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats,
+    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats, getEconomy,
     pmChat, pmReport, pmSuggest, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };

@@ -15,6 +15,8 @@ window.GState = (function () {
       notifications: [], // { uid, icon, title, body, time, read, type }
       connected: false,
       lastSync: 0,
+      funds: null,        // 公司资金
+      economy: null,      // 经济视图 { funds, ledger, hireCost, reward }
     };
   }
 
@@ -40,12 +42,14 @@ window.GState = (function () {
 
   function reset() { S = defaultState(); save(); emit(); }
 
-  function get() { return S; }
-  function emit() { listeners.forEach(f => { try { f(S); } catch (e) {} }); }
+  // 防御：未加载时自动加载，避免返回 null 导致 UI 崩溃
+  function get() { if (!S) load(); return S; }
+  function emit() { if (!S) load(); listeners.forEach(f => { try { f(S); } catch (e) {} }); }
   function on(fn) { listeners.push(fn); }
-  function set(mutator) { mutator(S); save(); emit(); }
+  function set(mutator) { if (!S) load(); mutator(S); save(); emit(); }
 
   function notify(title, body, opts = {}) {
+    if (!S) load();
     const n = {
       uid: "n" + Date.now() + Math.floor(Math.random() * 9999),
       icon: opts.icon || "bell", title, body,

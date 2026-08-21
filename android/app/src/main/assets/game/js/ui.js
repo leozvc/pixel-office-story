@@ -21,6 +21,7 @@ window.UI = (function () {
     };
     if (el.net) el.net.addEventListener("click", () => openPanel("connect"));
     if (el.bell) el.bell.addEventListener("click", () => openPanel("notif"));
+    const fundsBtn = $("hud-funds"); if (fundsBtn) fundsBtn.addEventListener("click", () => { openPanel("tasks"); renderEconomy(); });
     const empBtn = $("hud-team"); if (empBtn) empBtn.addEventListener("click", () => openPanel("emp"));
     const taskBtn = $("hud-tasks"); if (taskBtn) taskBtn.addEventListener("click", () => openPanel("tasks"));
     const newBtn = $("hud-newtask"); if (newBtn) newBtn.addEventListener("click", openTaskNew);
@@ -51,6 +52,7 @@ window.UI = (function () {
     renderHUD(); renderBadge();
     if (window.Bridge && Bridge.isConfigured() && window.PM) {
       PM.syncFromBridge().catch(() => {});
+      refreshFunds().catch(() => {});
       startNotifPolling();
     }
   }
@@ -169,6 +171,20 @@ window.UI = (function () {
     if (el.emp) el.emp.textContent = "👥 " + Ss.employees.length;
     const tasksBtn = $("hud-tasks");
     if (tasksBtn) tasksBtn.textContent = "📋 " + Ss.tasks.length;
+    const fundsBtn = $("hud-funds");
+    if (fundsBtn) fundsBtn.textContent = "💰 " + (Ss.funds != null ? fmt(Ss.funds) : "…");
+  }
+  // 拉取公司资金刷新 HUD
+  async function refreshFunds() {
+    if (!window.Bridge || !Bridge.isConfigured()) return;
+    try {
+      const d = await Bridge.getEconomy();
+      if (d && d.economy && d.economy.funds != null) {
+        S.get().funds = d.economy.funds;
+        S.get().economy = d.economy;
+        S.save(); S.emit();
+      }
+    } catch (e) {}
   }
   function renderBadge() {
     if (!el.badge) return;
@@ -305,16 +321,21 @@ window.UI = (function () {
     }
     const hireRow = document.createElement("div");
     hireRow.className = "hire-row";
+    const hc = (Ss.economy && Ss.economy.hireCost) || { dev: 1000, art: 1200, qa: 800, ops: 900 };
     for (const role of ["dev", "art", "qa", "ops"]) {
       const b = document.createElement("button");
       b.className = "btn blue";
-      b.textContent = "招" + { dev: "程序员", art: "美术", qa: "测试", ops: "运营" }[role];
+      b.textContent = "招" + { dev: "程序员", art: "美术", qa: "测试", ops: "运营" }[role] + " 💰" + hc[role];
       b.addEventListener("click", async () => {
         const name = { dev: "阿伟", art: "小美", qa: "小测", ops: "小运" }[role] + "-" + Math.floor(Math.random() * 100);
         b.disabled = true; b.textContent = "雇佣中…";
-        try { await Bridge.hireEmployee(name, role); S.notify("新员工入职", name + " 已加入", { icon: "users", type: "hire" }); }
-        catch (e) { S.notify("失败", e.message, { icon: "excl", type: "error" }); }
-        b.disabled = false; b.textContent = "招" + { dev: "程序员", art: "美术", qa: "测试", ops: "运营" }[role];
+        try {
+          const d = await Bridge.hireEmployee(name, role);
+          S.notify("新员工入职", name + " 已加入（花费 " + (d.cost||hc[role]) + " 元）", { icon: "users", type: "hire" });
+          UI.refreshFunds();
+        }
+        catch (e) { S.notify("雇佣失败", e.message, { icon: "excl", type: "error" }); addPM("雇佣失败：" + e.message); }
+        b.disabled = false; b.textContent = "招" + { dev: "程序员", art: "美术", qa: "测试", ops: "运营" }[role] + " 💰" + hc[role];
         await PM.syncFromBridge().catch(() => {}); renderTeam();
       });
       hireRow.appendChild(b);
@@ -574,6 +595,54 @@ window.UI = (function () {
     body.appendChild(back);
   }
 
+  // ---------- 公司经济 ----------
+  async function renderEconomy() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("💰 公司财务"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">加载中…</div>';
+    try {
+      const d = await Bridge.getEconomy();
+      const eco = d.economy || {};
+      const funds = eco.funds || 0;
+      body.innerHTML = "";
+      body.appendChild(sec("💰 公司财务"));
+      // 资金大数字
+      body.innerHTML += `<div style="background:#4a3520;border:2px solid #1a120a;border-radius:6px;padding:14px;text-align:center;margin-bottom:10px">
+        <div style="font-size:12px;color:#b0a080">公司资金</div>
+        <div style="font-size:30px;color:#f2d04a;font-weight:bold;font-family:'MisekiBitmap',monospace">${fmt(funds)}</div>
+        <div style="font-size:11px;color:#8a6f52;margin-top:4px">完成任务赚钱 · 雇佣员工花钱</div>
+      </div>`;
+      // 价格表
+      body.appendChild(sec("价格表"));
+      const hc = eco.hireCost || { dev: 1000, art: 1200, qa: 800, ops: 900 };
+      body.innerHTML += '<div style="font-size:12px;line-height:1.9;color:#6e5f50">' +
+        "👨‍💻 程序员 " + hc.dev + "　🎨 美术 " + hc.art + "　🧪 测试 " + hc.qa + "　📣 运营 " + hc.ops + "</div>";
+      const rw = eco.reward || { high: 800, medium: 500, low: 300 };
+      body.innerHTML += '<div style="font-size:11px;color:#8a6f52;margin-top:4px">任务奖励：高优先 ' + rw.high + " / 中优先 " + rw.medium + " / 低优先 " + rw.low + " · 失败扣 200</div>";
+      // 资金流水
+      body.appendChild(sec("资金流水"));
+      const ledger = eco.ledger || [];
+      if (!ledger.length) body.innerHTML += '<div class="notif-empty">暂无流水</div>';
+      for (const l of ledger) {
+        const t = new Date(l.at||Date.now()).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});
+        const sign = l.amount >= 0 ? "+" : "";
+        body.innerHTML += `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 6px;border-bottom:1px dashed #d8c9a3">
+          <span style="color:#6e5f50">${esc(l.label)}</span>
+          <span style="color:${l.amount >= 0 ? "#3d8b6f" : "#c33c3c"};font-weight:bold">${sign}${l.amount}</span>
+          <span style="color:#b0a090;font-size:10px">${t}</span>
+        </div>`;
+      }
+      S.get().funds = funds; S.get().economy = eco; S.save(); S.emit();
+    } catch (e) { body.innerHTML += '<div class="notif-empty">读取失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
+
   // ---------- 新建任务 ----------
   function openTaskNew() {
     if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接任务编排服务。"); return; }
@@ -770,5 +839,5 @@ window.UI = (function () {
   }
   function fmt(n) { return Math.round(n).toLocaleString("zh-CN"); }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, flowShow, flowHide, flowStep, flowReset };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, flowShow, flowHide, flowStep, flowReset, refreshFunds };
 })();

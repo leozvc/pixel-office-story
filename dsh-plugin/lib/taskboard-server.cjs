@@ -83,6 +83,10 @@ async function dispatchTask(task, opts) {
         C.rememberTask(t);
         C.rememberEvent(`完成任务《${t.title}》`);
         for (const eid of (t.assigneeIds || [])) C.recordTaskCompletion(eid, t);
+        // 经济系统：任务完成奖励
+        t.reward = C.REWARD[t.priority || "medium"] || C.REWARD.medium;
+        t.fundsAfter = C.rewardTask(t);
+        C.saveKanban(k);
       }
     } catch (e) {
       const k = C.loadKanban();
@@ -103,6 +107,10 @@ async function dispatchTask(task, opts) {
         t.status = "failed";
         t.stage = "failed";
         t.updatedAt = Date.now();
+        C.saveKanban(k);
+        // 经济系统：任务失败扣款
+        t.penalty = C.FAIL_PENALTY;
+        t.fundsAfter = C.penalizeTask(t);
         C.saveKanban(k);
       }
     }
@@ -177,16 +185,26 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "POST" && pathname === "/v1/employees/hire") {
       const b = await C.readBody(req);
-      const emp = C.createEmployee(b.name, b.role || "dev");
+      const role = b.role || "dev";
+      const name = b.name || "";
+      // 经济系统：雇佣需要资金
+      const ch = C.chargeHire(role, name || role);
+      if (!ch.ok) { C.json(res, 400, { ok: false, error: "资金不足，无法雇佣（需要 " + ch.cost + " 元，当前 " + ch.funds + " 元）。请先完成任务赚钱。" }); return; }
+      const emp = C.createEmployee(name, role);
       const es = C.loadEmployees(); es.push(emp); C.saveEmployees(es);
       C.rememberEmployee(emp); // 记入公司记忆
-      C.json(res, 200, { ok: true, employee: { id: emp.id, name: emp.name, role: emp.role, roleName: emp.roleName, emoji: emp.emoji } });
+      C.json(res, 200, { ok: true, employee: { id: emp.id, name: emp.name, role: emp.role, roleName: emp.roleName, emoji: emp.emoji }, cost: ch.cost, funds: ch.funds });
       return;
     }
     if (req.method === "POST" && pathname === "/v1/employees/fire") {
       const b = await C.readBody(req);
       C.saveEmployees(C.loadEmployees().filter(e => e.id !== b.id));
       C.json(res, 200, { ok: true });
+      return;
+    }
+    // 公司经济视图（资金/流水/价格表）
+    if (req.method === "GET" && pathname === "/v1/economy") {
+      C.json(res, 200, { ok: true, economy: C.economyView() });
       return;
     }
     // 公司长期记忆（供游戏/调试查看）

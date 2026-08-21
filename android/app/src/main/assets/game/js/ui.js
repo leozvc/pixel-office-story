@@ -486,9 +486,12 @@ window.UI = (function () {
     const dashBtn = document.createElement("button");
     dashBtn.className = "btn green"; dashBtn.textContent = "🏢 总览";
     dashBtn.addEventListener("click", renderDashboard);
+    const tplBtn = document.createElement("button");
+    tplBtn.className = "btn gray"; tplBtn.textContent = "📌 模板";
+    tplBtn.addEventListener("click", renderTaskTemplates);
     const btnWrap = document.createElement("div");
     btnWrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
-    btnWrap.appendChild(dashBtn); btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(projBtn); btnWrap.appendChild(addBtn);
+    btnWrap.appendChild(dashBtn); btnWrap.appendChild(tplBtn); btnWrap.appendChild(archBtn); btnWrap.appendChild(statsBtn); btnWrap.appendChild(reportBtn); btnWrap.appendChild(suggestBtn); btnWrap.appendChild(projBtn); btnWrap.appendChild(addBtn);
     top.appendChild(cnt); top.appendChild(btnWrap);
     body.appendChild(top);
 
@@ -762,6 +765,52 @@ window.UI = (function () {
       body.appendChild(pre);
       UI.addPM("【PM 行动建议】\n" + content.slice(0, 300));
     } catch (e) { body.innerHTML += '<div class="notif-empty">建议生成失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
+
+  // ---------- 任务模板（一键创建常用任务） ----------
+  const TASK_TEMPLATES = [
+    { title: "写官网首页文案", desc: "为公司官网首页撰写介绍文案，突出像素风格与办公室经营玩法。", project: "官网", role: "ops" },
+    { title: "写登录页代码", desc: "用 HTML/CSS/JS 实现像素风格登录页，含表单校验。", project: "登录页", role: "dev" },
+    { title: "设计宣传海报", desc: "设计一张像素风宣传海报，含配色与构图说明。", project: "官网", role: "art" },
+    { title: "编写测试用例", desc: "为核心功能编写测试用例表与验收标准。", project: "测试", role: "qa" },
+    { title: "写推广活动方案", desc: "策划一次游戏推广活动，含目标/玩法/奖励/传播节奏。", project: "运营", role: "ops" },
+    { title: "写吉祥物设定", desc: "设计公司吉祥物角色设定，含外观/性格/使用场景。", project: "品牌", role: "art" },
+  ];
+  async function renderTaskTemplates() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("📌 任务模板"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px;margin-bottom:8px">一键创建常用任务，点击即派发执行</div>';
+    for (const t of TASK_TEMPLATES) {
+      const card = document.createElement("div");
+      card.className = "task-card";
+      card.style.cssText = "background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:8px;margin-bottom:8px;cursor:pointer";
+      card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <div style="font-weight:bold;font-size:13px;flex:1">${esc(t.title)}</div>
+        <span style="font-size:10px;color:#9fe8cf;flex-shrink:0">${esc(t.project||"")}</span>
+        <span style="font-size:10px;color:#f2d04a;flex-shrink:0">${esc({dev:"程序员",art:"美术",qa:"测试",ops:"运营"}[t.role]||"")}</span>
+      </div>
+      <div style="font-size:11px;color:#b0a080;margin-top:4px">${esc(t.desc)}</div>`;
+      card.addEventListener("click", async () => {
+        card.style.opacity = "0.6";
+        try {
+          const d = await Bridge.createTask(t.title, t.desc, [], "", "medium", t.project);
+          if (d.task) await Bridge.dispatchTask(d.task.id).catch(() => {});
+          S.notify("任务已创建", "「" + t.title + "」已派发执行", { icon: "flag", type: "task", important: true });
+          await PM.syncFromBridge().catch(() => {});
+          addPM("好的老板，已按模板创建「" + t.title + "」并派发给员工执行！");
+          renderKanban();
+        } catch (e) { addPM("创建失败：" + (e.message||"")); }
+        card.style.opacity = "1";
+      });
+      body.appendChild(card);
+    }
     const back = document.createElement("button");
     back.className = "btn gray"; back.textContent = "← 返回看板";
     back.style.cssText = "margin-top:12px;width:100%";

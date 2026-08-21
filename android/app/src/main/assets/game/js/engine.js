@@ -168,9 +168,10 @@ window.Game = (function () {
       const st = stationPos(i);
       const chr = Sp.makeCharacter(roleColors(emp.role));
       const busy = emp.status === "working" || emp.status === "running";
-      // 忙碌动画：轻微上下浮动（工作中的员工有节奏感）
+      // 忙碌动画：轻微上下浮动 + 打字/工作帧交替（工作中的员工有节奏感）
       const bob = busy ? Math.sin(now / 300 + i * 1.5) * 2 : 0;
-      const img = chr.idle;
+      const workFrame = busy && Math.floor(now / 260) % 2 === 1;
+      const img = busy && workFrame ? (chr.walk1 || chr.idle) : chr.idle;
       g.drawImage(img, st.x - 8, st.y - 38 + bob, 16, 20);
       // 工位桌
       g.fillStyle = "#8a6a42"; g.fillRect(st.x - 18, st.y + 4, 36, 6);

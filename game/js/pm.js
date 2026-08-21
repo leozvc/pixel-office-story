@@ -97,15 +97,16 @@ window.PM = (function () {
         const desc = a.desc || "";
         const assign = Array.isArray(a.assign) ? a.assign : [];
         const workspace = a.workspace || ""; // 可选，默认服务端分配
+        const project = a.project || ""; // 可选，任务所属项目/分类
         if (flow) flow("dispatch", "派发中");
         S.notify("派发任务", "「" + title + "」分配给 " + (assign.join("、") || "待定") + "，已加入任务看板", { icon: "flag", type: "task", important: true });
         try {
-          const d = await Bridge.createTask(title, desc, assign, workspace);
+          const d = await Bridge.createTask(title, desc, assign, workspace, undefined, project);
           if (d.task) {
             // 自动派发执行
             if (flow) flow("exec", "员工执行中");
             await Bridge.dispatchTask(d.task.id).catch(() => {});
-            S.notify("任务已派发", "「" + title + "」已交员工执行，产出将写入工作区", { icon: "flag", type: "task" });
+            S.notify("任务已派发", "「" + title + "」已交员工执行，产出将写入工作区" + (project ? "（项目：" + project + "）" : ""), { icon: "flag", type: "task" });
             // 让对应员工在办公室场景冒泡
             sceneEmpBubble(assign, "收到！开工！💪");
           }

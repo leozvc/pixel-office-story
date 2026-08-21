@@ -191,6 +191,8 @@
           try { UI.refreshFunds(); } catch (e) {}
           // 同步公司等级（可能触发升级庆祝）
           try { UI.refreshCompany(); } catch (e) {}
+          // 成就解锁检测（新成就即时提示）
+          try { UI.checkAchievements(); } catch (e) {}
           }
         }
       }).catch(function () {}).then(function () { UI.syncing = false; });

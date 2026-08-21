@@ -135,6 +135,26 @@ window.UI = (function () {
       }
     } catch (e) {}
   }
+  // 成就解锁检测：对比上次已解锁集合，新解锁则提示
+  let _seenAch = null;
+  async function checkAchievements() {
+    if (!window.Bridge || !Bridge.isConfigured()) return;
+    try {
+      const d = await Bridge.getAchievements();
+      const a = d.achievements || {};
+      const ids = (a.unlocked || []).map(x => x.id);
+      if (_seenAch === null) { _seenAch = new Set(ids); return; } // 首次不提示
+      const newly = (a.unlocked || []).filter(x => !_seenAch.has(x.id));
+      if (newly.length) {
+        newly.forEach(x => {
+          showToast({ title: "🏆 成就解锁！", body: x.icon + " " + x.name + " — " + x.desc, important: true });
+          SFX.play("bigWin");
+          addPM("🏆 恭喜解锁成就「" + x.name + "」！" + x.desc);
+        });
+      }
+      _seenAch = new Set(ids);
+    } catch (e) {}
+  }
 
   function sendChat() {
     const v = el.chatInput.value.trim();
@@ -1300,5 +1320,5 @@ window.UI = (function () {
     } catch (e) { return false; }
   }
 
-  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, renderAchievements, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany, claimDaily };
+  return { init, startBoot, openPanel, closeAllPanels, showToast, sendChat, addPM, addSys, addBoss, renderHUD, openTaskNew, openTaskDetail, onEmpClick, renderProjects, renderDashboard, renderEconomy, renderStats, renderWeeklyReport, renderPmSuggest, renderTaskTemplates, renderAchievements, flowShow, flowHide, flowStep, flowReset, refreshFunds, refreshCompany, claimDaily, checkAchievements };
 })();

@@ -133,6 +133,29 @@ window.PM = (function () {
         } catch (e) { S.notify("汇报失败", e.message, { icon: "excl", type: "error" }); }
         break;
       }
+      case "dashboard": {
+        // 公司总览
+        try {
+          UI.openPanel("tasks");
+          UI.renderDashboard();
+          pushHistory("pm", "【公司总览】已打开");
+        } catch (e) {}
+        break;
+      }
+      case "achievements": {
+        // 成就面板
+        try {
+          UI.openPanel("tasks");
+          UI.renderAchievements();
+          pushHistory("pm", "【成就】已打开");
+        } catch (e) {}
+        break;
+      }
+      case "signin": {
+        // 签到领奖
+        try { UI.claimDaily(); } catch (e) {}
+        break;
+      }
       default: break;
     }
   }

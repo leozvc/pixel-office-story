@@ -59,7 +59,17 @@ window.UI = (function () {
   }
 
   function greetingText() {
-    return "老板好！我是项目经理佐藤美咲。本版本已接入真实 DeepSeek harness，员工都是真实 AI agent，任务走任务看板统一管理。\n\n你可以：\n· 说「招个程序员/美术/测试/运营」雇佣员工\n· 说「帮我安排一个任务：…」创建任务（自动拆解子任务并执行）\n· 任务交付后可给员工提反馈，员工会自动修订再交付\n· 点 🎤 语音直接跟我说话\n· 点 📋 看任务看板 / 生成周报 / 查看统计\n· 说「汇报进度」查看所有任务状态\n\n先点右上角 ⚡ 连接任务编排服务。";
+    const h = new Date().getHours();
+    const day = h < 6 ? "夜深了" : h < 12 ? "早上好" : h < 14 ? "中午好" : h < 18 ? "下午好" : "晚上好";
+    const Ss = S.get();
+    const company = Ss.company ? Ss.company.name : "像素软件株式会社";
+    const funds = Ss.funds != null ? fmt(Ss.funds) + " 元" : "—";
+    const tasks = Ss.tasks.length;
+    const emps = Ss.employees.length;
+    const brief = window.Bridge && Bridge.isConfigured()
+      ? `${company}目前有 ${emps} 名员工、${tasks} 项任务，公司资金 ${funds}。`
+      : "本版本已接入真实 DeepSeek harness，先点右上角 ⚡ 连接任务编排服务。";
+    return `${day}，老板！我是项目经理佐藤美咲。${brief}\n\n你可以：\n· 说「招个程序员/美术/测试/运营」雇佣员工（需花费资金）\n· 说「帮我安排一个任务：…」创建任务（自动拆解子任务并执行）\n· 任务交付后可给员工提反馈，员工会自动修订再交付\n· 点 🎤 语音直接跟我说话\n· 点 📋 看任务看板 / 生成周报 / 查看统计 / 项目总览\n· 说「汇报进度」查看所有任务状态`;
   }
   function startBoot() {
     SFX.init(); SFX.play("open"); SFX.startBGM();

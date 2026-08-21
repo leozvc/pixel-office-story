@@ -81,6 +81,8 @@ window.Bridge = (function () {
   async function dispatchTask(id) { return await req("/v1/tasks/dispatch", "POST", { id }, settings.token); }
   async function setTaskStatus(id, status) { return await req("/v1/tasks/status", "POST", { id, status }, settings.token); }
   async function listWorkspace(id) { return await req("/v1/tasks/" + id + "/workspace", "GET", null, settings.token); }
+  // 公司长期记忆
+  async function getMemory() { return await req("/v1/memory", "GET", null, settings.token); }
 
   // ---- PM 对话 ----
   async function pmChat(messages, team, tasks) {
@@ -122,7 +124,7 @@ window.Bridge = (function () {
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
-    listTasks, createTask, dispatchTask, setTaskStatus, listWorkspace,
+    listTasks, createTask, dispatchTask, setTaskStatus, listWorkspace, getMemory,
     pmChat, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };

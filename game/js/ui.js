@@ -266,6 +266,37 @@ window.UI = (function () {
       hireRow.appendChild(b);
     }
     body.appendChild(hireRow);
+    // 公司记忆入口
+    const memBtn = document.createElement("button");
+    memBtn.className = "btn gray";
+    memBtn.textContent = "📖 公司记忆";
+    memBtn.style.cssText = "margin-top:10px;width:100%";
+    memBtn.addEventListener("click", renderMemory);
+    body.appendChild(memBtn);
+  }
+  async function renderMemory() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-emp").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("📖 公司长期记忆"));
+    try {
+      const d = await Bridge.getMemory();
+      const m = d.memory || {};
+      let html = "";
+      const emps = Object.values(m.employees || {});
+      if (emps.length) { html += "<div class='section-title'>团队成员</div>" + emps.map(e => "<div style='font-size:12px;padding:2px 0'>· " + esc(e.name) + "（" + esc(e.roleName||e.role) + "）</div>").join(""); }
+      const tasks = m.tasks || [];
+      if (tasks.length) { html += "<div class='section-title'>已完成任务</div>" + tasks.map(t => "<div style='font-size:12px;padding:3px 0;color:#6e5f50'>· " + esc(t.title) + "（" + esc((t.assign||[]).join("、")||"待定") + "）</div>").join(""); }
+      const events = m.events || [];
+      if (events.length) { html += "<div class='section-title'>关键事件</div>" + events.slice(0,8).map(e => "<div style='font-size:12px;padding:2px 0;color:#8a6f52'>· " + esc(e.text) + "</div>").join(""); }
+      if (!html) html = '<div class="notif-empty">暂无公司记忆</div>';
+      body.innerHTML += html;
+    } catch (e) { body.innerHTML += '<div class="notif-empty">读取失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回团队";
+    back.style.cssText = "margin-top:10px;width:100%";
+    back.addEventListener("click", () => renderTeam());
+    body.appendChild(back);
   }
   function sec(text) { const d = document.createElement("div"); d.className = "section-title"; d.textContent = text; return d; }
 

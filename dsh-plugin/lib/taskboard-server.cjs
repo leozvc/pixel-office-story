@@ -107,9 +107,12 @@ async function dispatchTask(task, opts) {
         C.rememberTask(t);
         C.rememberEvent(`完成任务《${t.title}》`);
         for (const eid of (t.assigneeIds || [])) C.recordTaskCompletion(eid, t);
-        // 经济系统：任务完成奖励
-        t.reward = C.REWARD[t.priority || "medium"] || C.REWARD.medium;
-        t.fundsAfter = C.rewardTask(t);
+        // 经济系统：任务完成奖励（仅首次完成奖励，修订不重复发放）
+        if (!t.rewarded) {
+          t.rewarded = true;
+          t.reward = C.REWARD[t.priority || "medium"] || C.REWARD.medium;
+          t.fundsAfter = C.rewardTask(t);
+        }
         C.saveKanban(k);
       }
     } catch (e) {

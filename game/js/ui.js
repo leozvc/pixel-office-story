@@ -971,6 +971,19 @@ window.UI = (function () {
           <div style="font-size:18px;color:#9fe8cf;font-weight:bold">${fmt(funds)}</div>
         </div>
       </div>`;
+      // 下一等级进度
+      if (co.next) {
+        const np = co.nextProgress || {};
+        body.innerHTML += `<div style="background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:8px;margin-bottom:8px">
+          <div style="font-size:11px;color:#b0a080;margin-bottom:4px">下一阶段：${esc(co.next.emoji)} ${esc(co.next.name)}（Lv.${co.next.level}）</div>
+          <div style="font-size:11px;color:#6e5f50;margin-bottom:2px">📋 任务 ${co.doneTasks||0}/${co.next.minTasks}</div>
+          <div class="proj-bar"><div style="width:${np.tasksPct||0}%"></div></div>
+          <div style="font-size:11px;color:#6e5f50;margin:4px 0 2px">💰 资金 ${fmt(co.funds||0)}/${fmt(co.next.minFunds)}</div>
+          <div class="proj-bar"><div style="width:${np.fundsPct||0}%"></div></div>
+        </div>`;
+      } else {
+        body.innerHTML += '<div style="font-size:12px;color:#5fbf8f;margin-bottom:8px">🏆 已达成最高公司等级！</div>';
+      }
       // 任务/员工概览
       body.innerHTML += `<div style="display:flex;gap:8px;margin-bottom:8px">
         <div style="flex:1;background:#3a2a1a;border:2px solid #1a120a;border-radius:6px;padding:8px;text-align:center">

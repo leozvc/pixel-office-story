@@ -337,14 +337,25 @@ function recordEconomy(type, amount, label) {
   return e.funds;
 }
 // 任务完成奖励（按优先级，公司等级越高奖励加成越多）
-const REWARD_LEVEL_BONUS = { 1: 1.0, 2: 1.25, 3: 1.5, 4: 2.0 }; // 等级加成系数
+const REWARD_LEVEL_BONUS = { 1: 1.0, 2: 1.25, 3: 1.5, 4: 2.0 }; // 公司等级加成系数
+const EMP_LEVEL_BONUS = 0.05; // 员工每级奖励加成 5%
 function rewardTask(task) {
   const amt = REWARD[task.priority || "medium"] || REWARD.medium;
   // 根据公司等级加成：高级公司任务更值钱（强化"成长→收益"正反馈）
   let bonus = 1.0;
   try { const co = companyView(); bonus = REWARD_LEVEL_BONUS[co.level] || 1.0; } catch (e) {}
-  const final = Math.round(amt * bonus);
-  const label = bonus > 1 ? `完成任务《${task.title}》(x${bonus})` : `完成任务《${task.title}》`;
+  // 员工等级加成：高等级员工完成任务收益更高（强化"培养员工"价值）
+  let empBonus = 1.0;
+  try {
+    const es = loadEmployees();
+    const assignee = (task.assigneeIds || []).map(id => es.find(e => e.id === id)).find(Boolean);
+    if (assignee && assignee.stats && assignee.stats.level > 1) empBonus = 1 + (assignee.stats.level - 1) * EMP_LEVEL_BONUS;
+  } catch (e) {}
+  const final = Math.round(amt * bonus * empBonus);
+  const parts = [];
+  if (bonus > 1) parts.push("x" + bonus);
+  if (empBonus > 1) parts.push("员工Lv+" + Math.round((empBonus - 1) * 100) + "%");
+  const label = parts.length ? `完成任务《${task.title}》(${parts.join(",")})` : `完成任务《${task.title}》`;
   recordEconomy("income", final, label);
   return final; // 返回实际入账金额（含加成）
 }
@@ -365,7 +376,7 @@ function economyView() {
   const e = loadEconomy();
   let levelBonus = 1.0;
   try { const co = companyView(); levelBonus = REWARD_LEVEL_BONUS[co.level] || 1.0; } catch (err) {}
-  return { funds: e.funds || START_FUNDS, ledger: e.ledger.slice(0, 30), hireCost: HIRE_COST, reward: REWARD, rewardBonus: levelBonus, bonusNote: levelBonus > 1 ? "当前公司等级任务奖励 x" + levelBonus : "" };
+  return { funds: e.funds || START_FUNDS, ledger: e.ledger.slice(0, 30), hireCost: HIRE_COST, reward: REWARD, rewardBonus: levelBonus, bonusNote: levelBonus > 1 ? "当前公司等级任务奖励 x" + levelBonus : "", empBonusNote: "高等级员工（Lv≥2）完成任务额外 +5%/级" };
 }
 
 // ---------- 公司等级/里程碑 ----------

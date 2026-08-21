@@ -981,6 +981,7 @@ window.UI = (function () {
       const rw = eco.reward || { high: 800, medium: 500, low: 300 };
       body.innerHTML += '<div style="font-size:11px;color:#8a6f52;margin-top:4px">任务奖励：高优先 ' + rw.high + " / 中优先 " + rw.medium + " / 低优先 " + rw.low + " · 失败扣 200</div>";
       if (eco.bonusNote) body.innerHTML += '<div style="font-size:11px;color:#f2d04a;margin-top:3px">⭐ ' + esc(eco.bonusNote) + "</div>";
+      if (eco.empBonusNote) body.innerHTML += '<div style="font-size:11px;color:#9fe8cf;margin-top:3px">🧑‍💻 ' + esc(eco.empBonusNote) + "</div>";
       // 资金流水
       body.appendChild(sec("资金流水"));
       const ledger = eco.ledger || [];

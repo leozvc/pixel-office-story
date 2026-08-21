@@ -363,6 +363,23 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true, archived: (k.archived || []).map(t => ({ id: t.id, title: t.title, assign: t.assign || [], status: t.status, output: t.output || "", archivedAt: t.archivedAt, workspace: t.workspace })) });
       return;
     }
+    // 从归档恢复任务回看板
+    if (req.method === "POST" && pathname === "/v1/tasks/restore") {
+      const b = await C.readBody(req);
+      const k = C.loadKanban();
+      const idx = (k.archived || []).findIndex(x => x.id === b.id);
+      if (idx < 0) { C.json(res, 404, { ok: false, error: "archived task not found" }); return; }
+      const t = k.archived.splice(idx, 1)[0];
+      delete t.archivedAt;
+      t.status = "todo";
+      t.stage = "";
+      t.updatedAt = Date.now();
+      if (!k.tasks) k.tasks = [];
+      k.tasks.push(t);
+      C.saveKanban(k);
+      C.json(res, 200, { ok: true, task: { ...t, history: undefined } });
+      return;
+    }
     // 数据统计
     if (req.method === "GET" && pathname === "/v1/stats") {
       const k = C.loadKanban();

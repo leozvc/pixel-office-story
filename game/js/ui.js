@@ -586,10 +586,19 @@ window.UI = (function () {
         const card = document.createElement("div");
         card.className = "task-card";
         card.style.cssText = "background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:8px;margin-bottom:8px";
-        card.innerHTML = `<div style="font-weight:bold;font-size:13px">${esc(a.title)}</div>
+        card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><div style="font-weight:bold;font-size:13px;flex:1">${esc(a.title)}</div>
+          <button class="btn green" data-restore="${esc(a.id)}" style="flex-shrink:0;padding:3px 8px;font-size:11px">↩ 恢复</button></div>
           <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((a.assign||[]).join("、") || "待定")} · 归档于 ${new Date(a.archivedAt||Date.now()).toLocaleDateString()}</div>
           <div style="font-size:11px;color:#8a6f52;margin-top:4px;word-break:break-all">工作区：${esc(a.workspace||"")}</div>
           ${a.output ? '<div style="font-size:11px;color:#6e5f50;margin-top:4px;max-height:60px;overflow:hidden;white-space:pre-wrap">' + esc(a.output.slice(0,150)) + '</div>' : ""}`;
+        card.querySelector("[data-restore]").addEventListener("click", async (e) => {
+          e.stopPropagation();
+          try {
+            await Bridge.restoreTask(a.id);
+            addPM("已把「" + a.title + "」恢复到任务看板（待办）。");
+            renderArchived();
+          } catch (err) { addPM("恢复失败：" + (err.message||"")); }
+        });
         body.appendChild(card);
       }
     } catch (e) { body.innerHTML += '<div class="notif-empty">读取失败：' + esc(e.message||"") + "</div>"; }

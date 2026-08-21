@@ -85,6 +85,7 @@ window.Bridge = (function () {
   async function cancelTask(id) { return await req("/v1/tasks/status", "POST", { id, cancel: true }, settings.token); }
   async function deleteTask(id) { return await req("/v1/tasks/delete", "POST", { id }, settings.token); }
   async function archiveTask(id) { return await req("/v1/tasks/archive", "POST", { id }, settings.token); }
+  async function restoreTask(id) { return await req("/v1/tasks/restore", "POST", { id }, settings.token); }
   async function sendFeedback(id, feedback) { return await req("/v1/tasks/feedback", "POST", { id, feedback }, settings.token); }
   async function listArchived() { return await req("/v1/tasks/archived", "GET", null, settings.token); }
   async function listWorkspace(id) { return await req("/v1/tasks/" + id + "/workspace", "GET", null, settings.token); }
@@ -146,7 +147,7 @@ window.Bridge = (function () {
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
-    listTasks, listProjects, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats, getEconomy, getCompany,
+    listTasks, listProjects, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, restoreTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats, getEconomy, getCompany,
     pmChat, pmReport, pmSuggest, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };

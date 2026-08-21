@@ -142,10 +142,10 @@ window.UI = (function () {
         } catch (e) { el.mic.textContent = "🎤"; addSys("（语音识别失败：" + (e.message || "未知错误") + "）"); flowReset(); }
         el.mic.textContent = "🎤";
       };
-      mediaRecorder.start(); recording = true; el.mic.textContent = "🔴"; addSys("（录音中…再次点击结束）");
+      mediaRecorder.start(); recording = true; el.mic.textContent = "🔴"; el.mic.classList.add("recording"); addSys("（录音中…再次点击结束）");
     } catch (e) { addSys("（无法使用麦克风：" + (e.message || "权限被拒") + "）"); }
   }
-  function stopVoice() { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); recording = false; }
+  function stopVoice() { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); recording = false; if (el.mic) { el.mic.classList.remove("recording"); } }
 
   // ---------- 语音/任务流程可视化 ----------
   // 阶段：asr(识别) → pm(PM理解) → dispatch(派发) → exec(执行) → done(完成)

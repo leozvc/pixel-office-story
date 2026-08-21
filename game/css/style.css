@@ -478,3 +478,14 @@ textarea { width: 100%; background: var(--c-surface3); color: #2f2b26; border: 1
 }
 .boot-company .bco-emp { color: #9fe8cf; }
 .boot-company .bco-task { color: #cfe0ff; }
+
+/* 录音中脉冲动画 */
+#mic-btn.recording {
+  background: #a33a1e;
+  animation: recPulse 1s infinite;
+  box-shadow: 0 0 8px rgba(217,79,43,.7);
+}
+@keyframes recPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}

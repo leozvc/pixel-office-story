@@ -343,12 +343,19 @@ window.UI = (function () {
       const statusZh = { working: "工作中", busy: "忙碌", idle: "空闲" }[e.status] || e.status;
       const sk = e.skill || {};
       const domains = (sk.domains || []).join("、");
+      const xp = sk.xp || 0;
+      const lvl = sk.level || 1;
+      const xpInLvl = xp % 30;
+      const xpPct = Math.round((xpInLvl / 30) * 100);
       const card = document.createElement("div");
       card.className = "emp-card";
+      card.style.cssText = "padding:8px;border:2px solid #4a3728;border-radius:4px;background:#fff;margin-bottom:8px";
       card.innerHTML = `<div class="emp-portrait">${esc(e.emoji || "👤")}</div>
-        <div class="emp-info"><div class="ename">${esc(e.name)} ${esc(e.roleName || "")} <span style="font-size:10px;color:#f2d04a">Lv.${sk.level||1}</span></div>
+        <div class="emp-info"><div class="ename">${esc(e.name)} ${esc(e.roleName || "")} <span style="font-size:10px;color:#f2d04a">Lv.${lvl}</span></div>
         <div class="erole">${esc(e.label || "")} · <span class="${e.status === 'working' ? 'stat-working' : ''}">${esc(statusZh)}</span></div>
-        ${sk.tasksDone ? `<div class="eskill" style="font-size:11px;color:#8a6f52;margin-top:2px">已完成 ${sk.tasksDone} 项 · 经验 ${sk.xp||0}${domains ? " · 擅长：" + esc(domains) : ""}</div>` : ""}</div>`;
+        ${sk.tasksDone ? `<div style="font-size:11px;color:#8a6f52;margin-top:2px">已完成 ${sk.tasksDone} 项 · 经验 ${xp}${domains ? " · 擅长：" + esc(domains) : ""}</div>` : ""}
+        <div class="proj-bar" style="margin-top:5px;height:6px"><div style="width:${xpPct}%"></div></div>
+        <div style="font-size:9px;color:#b0a090;margin-top:1px">Lv.${lvl} 经验 ${xpInLvl}/30 到下一级</div></div>`;
       body.appendChild(card);
     }
     const hireRow = document.createElement("div");

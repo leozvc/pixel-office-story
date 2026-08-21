@@ -157,11 +157,15 @@ let activeDispatches = 0;
 const waitingQueue = []; // 元素：{ task, opts }
 function scheduleNext() {
   if (activeDispatches >= MAX_PARALLEL) return;
-  // 从等待队列中挑一个"员工未繁忙"的任务执行
+  // 从等待队列中挑一个"员工未繁忙"的任务执行（高优先级优先）
   const es = C.loadEmployees();
   const busyEmp = new Set(es.filter(e => e.status === "working").map(e => e.id));
-  const idx = waitingQueue.findIndex(q => !(q.task.assigneeIds || []).some(id => busyEmp.has(id)));
-  if (idx < 0) return; // 都忙，等有人空闲后再调度
+  const prio = { high: 0, medium: 1, low: 2 };
+  const free = waitingQueue.filter(q => !(q.task.assigneeIds || []).some(id => busyEmp.has(id)));
+  if (!free.length) return; // 都忙，等有人空闲后再调度
+  free.sort((a, b) => (prio[a.task.priority || "medium"] || 1) - (prio[b.task.priority || "medium"] || 1) || (b.task.createdAt || 0) - (a.task.createdAt || 0));
+  const entry = free[0];
+  const idx = waitingQueue.indexOf(entry);
   const { task, opts } = waitingQueue.splice(idx, 1)[0];
   activeDispatches++;
   dispatchTask(task, opts).catch(() => {}).finally(() => {

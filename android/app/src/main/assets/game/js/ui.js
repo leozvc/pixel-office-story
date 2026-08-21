@@ -456,7 +456,7 @@ window.UI = (function () {
       // 员工工作量
       const empWork = s.empWork || [];
       if (empWork.length) {
-        body.innerHTML += sec("员工工作量");
+        body.appendChild(sec("员工工作量"));
         for (const e of empWork) {
           const row = document.createElement("div");
           row.style.cssText = "display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed #4a3520";

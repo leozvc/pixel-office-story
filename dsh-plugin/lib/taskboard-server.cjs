@@ -311,6 +311,27 @@ const server = http.createServer(async (req, res) => {
       C.json(res, 200, { ok: true, content, model: C.FAST_MODEL });
       return;
     }
+    // PM 项目周报（LLM 生成结构化汇报）
+    if (req.method === "POST" && pathname === "/v1/pm/report") {
+      const k = C.loadKanban();
+      const es = C.loadEmployees();
+      const memory = C.buildMemorySummary();
+      const doneTasks = k.tasks.filter(t => t.status === "done");
+      const doingTasks = k.tasks.filter(t => t.status === "doing");
+      const todoTasks = k.tasks.filter(t => t.status === "todo");
+      const data = {
+        stats: { total: k.tasks.length, done: doneTasks.length, doing: doingTasks.length, todo: todoTasks.length },
+        done: doneTasks.slice(-8).map(t => ({ title: t.title, assign: t.assign || [], output: (t.output || "").slice(0, 100) })),
+        doing: doingTasks.map(t => ({ title: t.title, assign: t.assign || [] })),
+        todo: todoTasks.map(t => ({ title: t.title, assign: t.assign || [] })),
+        employees: es.map(e => ({ name: e.name, role: e.roleName, status: e.status, done: (e.stats && e.stats.tasksDone) || 0 })),
+        history: (memory || "").slice(0, 500),
+      };
+      const sys = "你是《像素办公室物语》的项目经理佐藤美咲，为老板生成一份简洁清晰的项目周报。按以下结构用中文输出（Markdown 风格，简洁不啰嗦）：\n\n# 项目周报\n\n## 本周概览\n- 总任务/已完成/进行中/待办数量\n\n## 本周完成\n- 逐条列已完成任务及负责人、产出要点\n\n## 进行中\n- 正在执行的任务\n\n## 待办\n- 待处理任务\n\n## 团队\n- 各员工状态与工作量\n\n## 下周建议\n- 1-2 条建议\n\n数据（JSON）：" + JSON.stringify(data);
+      const content = await C.llm([{ role: "system", content: sys }, { role: "user", content: "请基于以上项目数据，生成完整的项目周报（用中文 Markdown）。" }], { maxTokens: 1200, timeout: 90000 });
+      C.json(res, 200, { ok: true, content, model: C.FAST_MODEL });
+      return;
+    }
 
     // ---- ASR（whisper） ----
     if (req.method === "POST" && pathname === "/v1/asr") {

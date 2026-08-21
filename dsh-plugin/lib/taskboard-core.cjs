@@ -125,7 +125,8 @@ function verifyToken(header) { if (!header || !header.startsWith("Bearer ")) ret
 loadTokens();
 
 // ---------- LLM ----------
-async function llm(messages, { model = FAST_MODEL, temperature = 0.7, maxTokens = 1200, timeout = 120000 } = {}) {
+// 单次请求。若返回空内容，调用方可选在首条消息仅有 system 时追加 user 消息重试（部分模型 system-only 请求会返回空）。
+async function llmOnce(messages, { model = FAST_MODEL, temperature = 0.7, maxTokens = 1200, timeout = 120000 } = {}) {
   const resp = await fetch(LLM_BASE + "/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + API_KEY },
@@ -137,6 +138,18 @@ async function llm(messages, { model = FAST_MODEL, temperature = 0.7, maxTokens 
   const c = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
   if (!c) throw new Error("LLM empty");
   return c.trim();
+}
+async function llm(messages, opts) {
+  try {
+    return await llmOnce(messages, opts);
+  } catch (e) {
+    // 空内容容错：请求里若没有 user 消息，补一条 user 消息重试（部分模型 system-only 会返回空）
+    if (/LLM empty/.test(e.message) && !messages.some(m => m.role === "user")) {
+      const retry = messages.concat([{ role: "user", content: "请基于以上内容，直接输出你的完整回答。" }]);
+      return await llmOnce(retry, opts);
+    }
+    throw e;
+  }
 }
 
 // ---------- 员工 ----------

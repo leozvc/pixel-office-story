@@ -201,8 +201,32 @@ window.Game = (function () {
         g.fillStyle = "#222";
         g.font = "6px sans-serif";
         g.fillText("···", st.x, st.y - 45);
+        // 显示当前执行任务标题（流程可视化：一眼看到员工在做什么）
+        const curTask = currentTaskFor(emp.name);
+        if (curTask) {
+          const label = "「" + (curTask.title.length > 8 ? curTask.title.slice(0, 8) + "…" : curTask.title) + "」";
+          g.font = "7px 'MisekiBitmap', monospace";
+          const tw = g.measureText(label).width;
+          const bx = st.x - tw / 2 - 3, by = st.y - 54;
+          g.fillStyle = "rgba(43,32,20,0.92)";
+          g.fillRect(bx, by, tw + 6, 11);
+          g.strokeStyle = "#f2d04a"; g.lineWidth = 1;
+          g.strokeRect(bx + 0.5, by + 0.5, tw + 5, 10);
+          g.fillStyle = "#ffe8a0"; g.textAlign = "center";
+          g.fillText(label, st.x, by + 8);
+        }
       }
     });
+  }
+
+  // 找到该员工正在执行的任务（doing/planning 且 assign 含该员工）
+  function currentTaskFor(empName) {
+    const Ss = S.get();
+    const active = (Ss.tasks || []).filter(t => t.status === "doing" || t.status === "todo");
+    for (const t of active) {
+      if ((t.assign || []).some(n => n === empName)) return t;
+    }
+    return null;
   }
 
   function drawBubble(x, y, text) {

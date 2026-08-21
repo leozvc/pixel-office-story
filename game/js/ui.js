@@ -216,7 +216,7 @@ window.UI = (function () {
         if (d.serverTime) notifCursor = d.serverTime;
         if (d.events && d.events.length) {
           for (const ev of d.events) {
-            S.notify("任务完成 ✅", "「" + ev.title + "」已完成！", { icon: "star", type: "complete", important: true });
+            S.notify("任务完成 ✅", "「" + ev.title + "」已完成！", { icon: "star", type: "complete", important: true, taskId: ev.id });
             showToast({ title: "任务完成 ✅", body: "「" + ev.title + "」已完成，点击查看产出", important: true, taskId: ev.id });
             SFX.play("levelup");
           }
@@ -869,6 +869,13 @@ window.UI = (function () {
     const body = $("panel-notif").querySelector(".panel-body");
     if (!Ss.notifications.length) { body.innerHTML = '<div class="notif-empty">暂无通知</div>'; return; }
     body.innerHTML = "";
+    // 清空按钮
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "btn gray";
+    clearBtn.textContent = "🗑 清空全部（" + Ss.notifications.length + "）";
+    clearBtn.style.cssText = "width:100%;margin-bottom:8px";
+    clearBtn.addEventListener("click", () => { if (confirm("清空全部通知？")) { S.get().notifications = []; S.save(); S.emit(); renderNotif(); } });
+    body.appendChild(clearBtn);
     for (const n of Ss.notifications) {
       const item = document.createElement("div");
       item.className = "notif-item" + (n.read ? "" : " unread");
@@ -876,7 +883,7 @@ window.UI = (function () {
       item.querySelector(".t").textContent = n.title;
       item.querySelector(".b").textContent = n.body;
       item.querySelector(".tm").textContent = new Date(n.time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-      item.addEventListener("click", () => { n.read = true; S.emit(); renderNotif(); });
+      item.addEventListener("click", () => { n.read = true; S.emit(); if (n.taskId) { closeAllPanels(); openPanel("tasks"); setTimeout(() => openTaskDetail(n.taskId), 80); } else { renderNotif(); } });
       body.appendChild(item);
     }
   }

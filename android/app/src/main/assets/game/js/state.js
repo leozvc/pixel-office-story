@@ -55,6 +55,7 @@ window.GState = (function () {
       icon: opts.icon || "bell", title, body,
       time: Date.now(), read: false, type: opts.type || "info",
       important: !!opts.important,
+      taskId: opts.taskId || null,
     };
     S.notifications.unshift(n);
     if (S.notifications.length > 80) S.notifications.length = 80;

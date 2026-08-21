@@ -17,42 +17,65 @@ const HOST = C.HOST;
 C.ensureDirs();
 
 // 任务执行调度：把 todo 任务交给员工执行（顺序，避免并发混乱）
+let dispatching = new Set(); // 正在执行的任务 id，避免重复派发
 async function dispatchTask(task) {
+  // 若已在执行则跳过
+  if (dispatching.has(task.id)) return;
   const es = C.loadEmployees();
   const assignees = task.assigneeIds.length ? task.assigneeIds.map(id => es.find(e => e.id === id)).filter(Boolean) : es.filter(e => e.role !== "pm" && e.id !== undefined).slice(0, 1);
   if (!assignees.length) {
-    task.status = "done";
-    task.output = "（暂无可用员工 agent，请先雇佣员工）";
-    task.updatedAt = Date.now();
-    return;
-  }
-  task.status = "doing";
-  task.updatedAt = Date.now();
-  for (const e of assignees) { e.status = "working"; }
-  C.saveEmployees(es);
-  C.saveKanban(C.loadKanban()); // 刷新
-  // 实际执行（取第一个员工执行）
-  const emp = assignees[0];
-  try {
-    const out = await C.executeTask(emp, task);
+    // 无可用员工：保持 todo 并提示，等自动推进重试
     const k = C.loadKanban();
     const t = k.tasks.find(x => x.id === task.id);
     if (t) {
-      t.output = out;
-      t.outputFiles = [];
-      try { t.outputFiles = fs.readdirSync(task.workspace).filter(f => !f.endsWith(".txt")); } catch (e) {}
-      t.status = "done";
+      t.status = "todo";
+      t.output = "（等待可用员工 agent 执行）";
       t.updatedAt = Date.now();
       C.saveKanban(k);
     }
-  } catch (e) {
-    const k = C.loadKanban();
-    const t = k.tasks.find(x => x.id === task.id);
-    if (t) { t.output = "（执行失败：" + e.message + "）"; t.status = "done"; t.updatedAt = Date.now(); C.saveKanban(k); }
+    return;
   }
-  // 复位员工状态
-  for (const e of assignees) e.status = "idle";
-  C.saveEmployees(C.loadEmployees());
+  dispatching.add(task.id);
+  try {
+    // 先更新 kanban 中该任务的 doing + dispatchedAt（持久化，避免自动推进重复排队）
+    const kb = C.loadKanban();
+    const kbTask = kb.tasks.find(x => x.id === task.id);
+    if (kbTask) {
+      kbTask.status = "doing";
+      kbTask.updatedAt = Date.now();
+      kbTask.dispatchedAt = Date.now();
+      C.saveKanban(kb);
+    }
+    task.status = "doing";
+    task.updatedAt = Date.now();
+    task.dispatchedAt = Date.now();
+    for (const e of assignees) { e.status = "working"; }
+    C.saveEmployees(es);
+    // 实际执行（取第一个员工执行）
+    const emp = assignees[0];
+    try {
+      const out = await C.executeTask(emp, task);
+      const k = C.loadKanban();
+      const t = k.tasks.find(x => x.id === task.id);
+      if (t) {
+        t.output = out;
+        t.outputFiles = [];
+        try { t.outputFiles = fs.readdirSync(task.workspace).filter(f => !f.endsWith(".txt")); } catch (e) {}
+        t.status = "done";
+        t.updatedAt = Date.now();
+        C.saveKanban(k);
+      }
+    } catch (e) {
+      const k = C.loadKanban();
+      const t = k.tasks.find(x => x.id === task.id);
+      if (t) { t.output = "（执行失败：" + e.message + "）"; t.status = "done"; t.updatedAt = Date.now(); C.saveKanban(k); }
+    }
+    // 复位员工状态
+    for (const e of assignees) e.status = "idle";
+    C.saveEmployees(C.loadEmployees());
+  } finally {
+    dispatching.delete(task.id);
+  }
 }
 
 // 任务派发队列（顺序执行）
@@ -123,7 +146,9 @@ const server = http.createServer(async (req, res) => {
       fs.mkdirSync(task.workspace, { recursive: true });
       // 同步到 DSH web 任务看板（不阻塞响应）
       DshSync.syncTaskToDsh(task).catch(e => console.log("[pixb-sync] create 同步失败:", e.message));
-      C.json(res, 200, { ok: true, task });
+      // 自动派发执行，任务创建后立即推进
+      queueDispatch(task);
+      C.json(res, 200, { ok: true, task, autoDispatched: true });
       return;
     }
     if (req.method === "POST" && pathname === "/v1/tasks/dispatch") {
@@ -219,4 +244,14 @@ server.listen(PORT, HOST, () => {
   console.log("  工作区: " + C.WORKSPACE_ROOT);
   console.log("  本机 IP: " + C.localIPs().join(", "));
   console.log("----------------------------------------------------");
+  // 后台自动推进：定期扫描"未派发过"的 todo 任务自动派发执行，杜绝任务停滞
+  setInterval(() => {
+    const k = C.loadKanban();
+    // 只推进从未派发过的 todo 任务（已派发但执行中的不重复排队）
+    const pending = k.tasks.filter(t => t.status === "todo" && !t.dispatchedAt);
+    for (const t of pending) {
+      console.log("[pixb-auto] 自动推进任务: " + t.title + " (" + t.id + ")");
+      queueDispatch(t);
+    }
+  }, 5000);
 });

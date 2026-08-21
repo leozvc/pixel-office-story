@@ -100,11 +100,26 @@ function saveEmpHistory(empId, history) { const es = loadEmployees(); const e = 
 // 员工执行任务：LLM 线程 + 产出落盘工作区
 async function executeTask(emp, task) {
   const history = empHistory(emp.id);
-  history.push({ role: "user", content: `【新任务】${task.title}\n任务描述：${task.desc || ""}\n\n请实际完成，并把产出写入工作区目录 ${task.workspace}。完成后用中文简要汇报你做了什么、产出文件在哪。` });
-  const out = await llm(history, { maxTokens: 2000, timeout: 180000 });
+  // 多步骤推进：先理解任务 + 制定执行计划
+  history.push({ role: "user", content: `【新任务】${task.title}\n任务描述：${task.desc || ""}\n\n步骤1：请先说明你打算如何完成这个任务（1-3句执行计划），并给出你要产出的交付物清单。` });
+  const plan = await llm(history, { maxTokens: 600, timeout: 60000 });
+  history.push({ role: "assistant", content: plan });
+  // 步骤2：实际执行并产出完整交付物，写入工作区
+  history.push({ role: "user", content: `步骤2：现在请实际完成该任务，产出完整可交付内容（代码/方案/报告/文案等全文），并写入工作区目录 ${task.workspace}。完成后用中文汇报你交付了什么、文件路径在哪。` });
+  let out = await llm(history, { maxTokens: 2500, timeout: 180000 });
   history.push({ role: "assistant", content: out });
   saveEmpHistory(emp.id, history);
-  try { fs.mkdirSync(task.workspace, { recursive: true }); fs.writeFileSync(path.join(task.workspace, "TASK.md"), `# ${task.title}\n\n## 任务描述\n${task.desc || ""}\n\n## 员工产出\n${out}\n`, "utf8"); } catch (e) {}
+  // 质量校验：产出太短则重试一次（要求补充完整交付物）
+  if (out.trim().length < 40) {
+    history.push({ role: "user", content: `步骤3：你的产出过于简短（当前 ${out.trim().length} 字），请补充完整、可直接使用的交付物全文。` });
+    out = await llm(history, { maxTokens: 2500, timeout: 180000 });
+    history.push({ role: "assistant", content: out });
+    saveEmpHistory(emp.id, history);
+  }
+  try {
+    fs.mkdirSync(task.workspace, { recursive: true });
+    fs.writeFileSync(path.join(task.workspace, "TASK.md"), `# ${task.title}\n\n## 任务描述\n${task.desc || ""}\n\n## 执行计划\n${plan}\n\n## 员工产出\n${out}\n`, "utf8");
+  } catch (e) {}
   return out;
 }
 

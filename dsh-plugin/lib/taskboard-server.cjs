@@ -170,7 +170,8 @@ const server = http.createServer(async (req, res) => {
       if (!title) { C.json(res, 400, { ok: false, error: "title required" }); return; }
       const taskId = "task-" + Date.now() + "-" + Math.floor(Math.random() * 999);
       const ws = workspace || path.join(C.WORKSPACE_ROOT, "tasks", taskId);
-      const task = { id: taskId, title, desc: desc || "", assign: Array.isArray(assign) ? assign : [], assigneeIds: [], workspace: ws, status: "todo", createdAt: Date.now(), updatedAt: Date.now(), output: "", outputFiles: [] };
+      const priority = b.priority && ["high", "medium", "low"].includes(b.priority) ? b.priority : "medium";
+      const task = { id: taskId, title, desc: desc || "", assign: Array.isArray(assign) ? assign : [], assigneeIds: [], workspace: ws, status: "todo", priority, createdAt: Date.now(), updatedAt: Date.now(), output: "", outputFiles: [] };
       const es = C.loadEmployees();
       for (const name of task.assign) { const e = es.find(x => x.name === name || x.roleName === name); if (e) task.assigneeIds.push(e.id); }
       const k = C.loadKanban(); k.tasks.push(task); C.saveKanban(k);
@@ -204,9 +205,20 @@ const server = http.createServer(async (req, res) => {
       const k = C.loadKanban();
       const t = k.tasks.find(x => x.id === b.id);
       if (!t) { C.json(res, 404, { ok: false, error: "task not found" }); return; }
-      if (b.status && ["todo", "doing", "done"].includes(b.status)) { t.status = b.status; t.updatedAt = Date.now(); C.saveKanban(k); }
+      if (b.status && ["todo", "doing", "done", "failed"].includes(b.status)) { t.status = b.status; t.updatedAt = Date.now(); }
+      if (b.priority && ["high", "medium", "low"].includes(b.priority)) { t.priority = b.priority; t.updatedAt = Date.now(); }
+      if (b.cancel) { t.status = "todo"; t.stage = ""; t.updatedAt = Date.now(); }
+      C.saveKanban(k);
       DshSync.syncTaskToDsh(t).catch(e => console.log("[pixb-sync] status 同步失败:", e.message));
       C.json(res, 200, { ok: true, task: { ...t, history: undefined } });
+      return;
+    }
+    if (req.method === "POST" && pathname === "/v1/tasks/delete") {
+      const b = await C.readBody(req);
+      const k = C.loadKanban();
+      k.tasks = k.tasks.filter(x => x.id !== b.id);
+      C.saveKanban(k);
+      C.json(res, 200, { ok: true });
       return;
     }
     if (req.method === "GET" && pathname.startsWith("/v1/tasks/") && pathname.endsWith("/workspace")) {

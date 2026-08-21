@@ -16,7 +16,7 @@ window.PM = (function () {
       }));
       Ss.tasks = (taskRes && taskRes.tasks || []).map(t => ({
         id: t.id, title: t.title, desc: t.desc, assign: t.assign || [],
-        status: t.status, stage: t.stage || "", workspace: t.workspace, output: t.output || "",
+        status: t.status, stage: t.stage || "", priority: t.priority || "medium", workspace: t.workspace, output: t.output || "",
         outputFiles: t.outputFiles || [], createdAt: t.createdAt,
       }));
       Ss.connected = true;

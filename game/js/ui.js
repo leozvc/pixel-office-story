@@ -327,7 +327,8 @@ window.UI = (function () {
       colDiv.style.cssText = "flex:1;min-width:140px;background:#3a2a1a;border:1px solid #1a120a;border-radius:6px;padding:8px";
       const hdr = document.createElement("div");
       hdr.style.cssText = "font-weight:bold;font-size:13px;margin-bottom:8px;color:" + (col.id === "done" ? "#5fbf8f" : col.id === "doing" ? "#f2d04a" : "#cfe0ff");
-      const colTasks = Ss.tasks.filter(t => t.status === col.id);
+      const colTasks = Ss.tasks.filter(t => t.status === col.id)
+        .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[(a.priority||"medium")] - { high: 0, medium: 1, low: 2 }[(b.priority||"medium")]));
       hdr.textContent = col.name + " (" + colTasks.length + ")";
       colDiv.appendChild(hdr);
       for (const t of colTasks) {
@@ -340,11 +341,32 @@ window.UI = (function () {
           : t.status === "failed" ? '<span style="color:#e06c5a">❌ 失败</span>'
           : t.status === "doing" ? '<span style="color:#f2d04a">⏳ ' + esc(stageTxt||"执行中") + '</span>'
           : '<span style="color:#cfe0ff">待办</span>';
-        card.innerHTML = `<div style="font-weight:bold;font-size:13px">${esc(t.title)}</div>
+        const prioHtml = { high: '<span style="color:#e06c5a">🔺高</span>', medium: '<span style="color:#f2d04a">▪中</span>', low: '<span style="color:#5fbf8f">▫低</span>' }[t.priority||"medium"] || "";
+        card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:4px">
+            <div style="font-weight:bold;font-size:13px;flex:1">${esc(t.title)}</div>${prioHtml}
+            <button class="card-act" style="background:none;border:none;color:#b0a080;font-size:13px;cursor:pointer" data-act="menu">☰</button></div>
           <div style="font-size:11px;color:#b0a080;margin-top:4px">负责人：${esc((t.assign||[]).join("、") || "待定")}</div>
           <div style="font-size:11px;color:#8a6f52;margin-top:2px;word-break:break-all">工作区：${esc(t.workspace||"")}</div>
-          <div style="font-size:11px;margin-top:6px">${statusHtml}</div>`;
-        card.addEventListener("click", () => openTaskDetail(t.id));
+          <div style="font-size:11px;margin-top:6px">${statusHtml}</div>
+          <div class="card-menu" data-menu="${t.id}" style="display:none;margin-top:6px;background:#3a2a1a;border:1px solid #1a120a;border-radius:4px;padding:4px">
+            <button class="btn blue" data-act="redispatch" data-id="${t.id}" style="width:100%;margin:2px 0">${t.status === "done" ? "重新执行" : "重新执行"}</button>
+            <button class="btn gray" data-act="cancel" data-id="${t.id}" style="width:100%;margin:2px 0">移到待办</button>
+            <button class="btn gray" data-act="priority" data-id="${t.id}" data-p="high" style="width:100%;margin:2px 0">设为高优先级</button>
+            <button class="btn gray" data-act="priority" data-id="${t.id}" data-p="low" style="width:100%;margin:2px 0">设为低优先级</button>
+            <button class="btn gray" data-act="delete" data-id="${t.id}" style="width:100%;margin:2px 0;color:#e06c5a">删除任务</button>
+          </div>`;
+        card.addEventListener("click", (e) => { if (!e.target.closest(".card-act") && !e.target.closest(".card-menu")) openTaskDetail(t.id); });
+        card.addEventListener("click", (e) => {
+          const act = e.target.closest("[data-act]");
+          if (!act) return;
+          e.stopPropagation();
+          if (act.dataset.act === "menu") { const m = card.querySelector(".card-menu"); m.style.display = m.style.display === "none" ? "block" : "none"; return; }
+          const id = act.dataset.id;
+          if (act.dataset.act === "redispatch") { Bridge.dispatchTask(id).then(() => { S.notify("已安排执行", "", { type: "task" }); return PM.syncFromBridge(); }).catch(()=>{}); }
+          else if (act.dataset.act === "cancel") { Bridge.cancelTask(id).then(() => PM.syncFromBridge()).catch(()=>{}); }
+          else if (act.dataset.act === "priority") { Bridge.setTaskPriority(id, act.dataset.p).then(() => PM.syncFromBridge()).catch(()=>{}); }
+          else if (act.dataset.act === "delete") { if (confirm("删除任务？")) Bridge.deleteTask(id).then(() => PM.syncFromBridge()).catch(()=>{}); }
+        });
         colDiv.appendChild(card);
       }
       board.appendChild(colDiv);
@@ -367,6 +389,7 @@ window.UI = (function () {
       <div class="conn-field"><label>任务描述（目标/验收标准）</label><textarea id="tnew-desc" rows="4" placeholder="描述要完成什么、产出要求"></textarea></div>
       <div class="conn-field"><label>负责人（可多选）</label><div id="tnew-assign"></div></div>
       <div class="conn-field"><label>工作区目录（可选，留空自动分配）</label><input id="tnew-ws" placeholder="/Users/.../workspace/tasks/xxx" autocomplete="off"></div>
+      <div class="conn-field"><label>优先级</label><select id="tnew-priority" style="width:100%;background:#f4f1ea;color:#2f2b26;border:1px solid #c8b8a0;border-radius:4px;padding:6px;font-size:13px"><option value="high">🔺 高</option><option value="medium" selected>▪ 中</option><option value="low">▫ 低</option></select></div>
       <div style="display:flex;gap:8px;margin-top:10px"><button class="btn green" id="tnew-submit">创建并执行</button><button class="btn gray" id="tnew-cancel">取消</button></div>`;
     const assignBox = $("tnew-assign");
     for (const e of es) {
@@ -381,12 +404,13 @@ window.UI = (function () {
       const title = $("tnew-title").value.trim();
       const desc = $("tnew-desc").value.trim();
       const ws = $("tnew-ws").value.trim();
+      const priority = $("tnew-priority") ? $("tnew-priority").value : "medium";
       if (!title) { addPM("请填写任务标题。"); return; }
       const assign = Array.from(document.querySelectorAll("#tnew-assign input:checked")).map(i => i.value);
       const btn = $("tnew-submit");
       btn.disabled = true; btn.textContent = "创建中…";
       try {
-        const d = await Bridge.createTask(title, desc, assign, ws);
+        const d = await Bridge.createTask(title, desc, assign, ws, priority);
         S.notify("任务已创建", "「" + title + "」已加入看板并开始执行", { icon: "flag", type: "task", important: true });
         closeAllPanels();
         await PM.syncFromBridge().catch(() => {});

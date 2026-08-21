@@ -77,9 +77,12 @@ window.Bridge = (function () {
 
   // ---- 任务看板 ----
   async function listTasks() { return await req("/v1/tasks", "GET", null, settings.token); }
-  async function createTask(title, desc, assign, workspace) { return await req("/v1/tasks", "POST", { title, desc, assign, workspace }, settings.token); }
+  async function createTask(title, desc, assign, workspace, priority) { return await req("/v1/tasks", "POST", { title, desc, assign, workspace, priority }, settings.token); }
   async function dispatchTask(id) { return await req("/v1/tasks/dispatch", "POST", { id }, settings.token); }
   async function setTaskStatus(id, status) { return await req("/v1/tasks/status", "POST", { id, status }, settings.token); }
+  async function setTaskPriority(id, priority) { return await req("/v1/tasks/status", "POST", { id, priority }, settings.token); }
+  async function cancelTask(id) { return await req("/v1/tasks/status", "POST", { id, cancel: true }, settings.token); }
+  async function deleteTask(id) { return await req("/v1/tasks/delete", "POST", { id }, settings.token); }
   async function listWorkspace(id) { return await req("/v1/tasks/" + id + "/workspace", "GET", null, settings.token); }
   // 公司长期记忆
   async function getMemory() { return await req("/v1/memory", "GET", null, settings.token); }
@@ -124,7 +127,7 @@ window.Bridge = (function () {
     isConfigured, requestPairCode, confirmPair, clearPair, setServer, setDeviceName,
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
-    listTasks, createTask, dispatchTask, setTaskStatus, listWorkspace, getMemory,
+    listTasks, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, listWorkspace, getMemory,
     pmChat, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };

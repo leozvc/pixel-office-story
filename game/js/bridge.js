@@ -107,6 +107,9 @@ window.Bridge = (function () {
   async function pmReport() {
     return await req("/v1/pm/report", "POST", {}, settings.token);
   }
+  // 周报历史
+  async function listReports() { return await req("/v1/pm/reports", "GET", null, settings.token); }
+  async function getReport(day) { return await req("/v1/pm/reports/" + encodeURIComponent(day), "GET", null, settings.token); }
   // PM 行动建议
   async function pmSuggest() {
     return await req("/v1/pm/suggest", "POST", {}, settings.token);
@@ -148,7 +151,7 @@ window.Bridge = (function () {
     health, buildGameState,
     listEmployees, hireEmployee, fireEmployee,
     listTasks, listProjects, createTask, dispatchTask, setTaskStatus, setTaskPriority, cancelTask, deleteTask, archiveTask, restoreTask, sendFeedback, listArchived, listWorkspace, readWorkspaceFile, getMemory, getStats, getEconomy, getCompany,
-    pmChat, pmReport, pmSuggest, transcribeAudio, listNotifications,
+    pmChat, pmReport, pmSuggest, listReports, getReport, transcribeAudio, listNotifications,
     SETTINGS_KEY,
   };
 })();

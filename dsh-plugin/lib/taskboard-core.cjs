@@ -347,6 +347,22 @@ const COMPANY_TIERS = [
   { level: 3, minTasks: 25,  minFunds: 20000, name: "控股集团",  emoji: "🏙️" },
   { level: 4, minTasks: 50,  minFunds: 50000, name: "上市集团",  emoji: "🏆" },
 ];
+
+// ---------- 周报历史存档 ----------
+const REPORT_FILE = path.join(DATA_DIR, "reports.json");
+function loadReports() { return readJSON(REPORT_FILE, []); }
+function saveReports(r) { writeJSON(REPORT_FILE, r); }
+// 保存一份周报（按周去重：同一天只保留最新）
+function saveReport(content, meta) {
+  const reports = loadReports();
+  const day = new Date().toISOString().slice(0, 10);
+  // 移除同一天旧报告
+  const filtered = reports.filter(r => r.day !== day);
+  filtered.unshift({ day, content, stats: meta || {}, at: Date.now() });
+  if (filtered.length > 20) filtered.length = 20;
+  saveReports(filtered);
+  return filtered;
+}
 function companyView() {
   const k = loadKanban();
   const done = k.tasks.filter(t => t.status === "done").length;
@@ -363,4 +379,4 @@ function companyView() {
   return { level: tier.level, name: tier.name, emoji: tier.emoji, doneTasks: done, totalTasks: total, funds, next, nextProgress: next ? { tasksPct: Math.min(100, Math.round(done / next.minTasks * 100)), fundsPct: Math.min(100, Math.round(funds / next.minFunds * 100)) } : null };
 }
 
-module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, companyView, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, server: undefined };
+module.exports = { PORT, HOST, ROOT, WORKSPACE_ROOT, LLM_BASE, FAST_MODEL, API_KEY, ROLE_META, PM_PROMPT, ensureDirs, loadKanban, saveKanban, loadEmployees, saveEmployees, createEmployee, empHistory, saveEmpHistory, executeTask, llm, json, readBody, transcribe, localIPs, newPairCode, verifyCode, newToken, verifyToken, loadMemory, saveMemory, rememberTask, rememberEmployee, rememberEvent, buildMemorySummary, recordTaskCompletion, employeeSkillView, loadEconomy, saveEconomy, recordEconomy, rewardTask, penalizeTask, chargeHire, economyView, companyView, loadReports, saveReport, START_FUNDS, HIRE_COST, REWARD, FAIL_PENALTY, server: undefined };

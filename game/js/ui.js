@@ -665,17 +665,69 @@ window.UI = (function () {
       // 复制按钮（分享/导出）
       const copyBtn = document.createElement("button");
       copyBtn.className = "btn gray"; copyBtn.textContent = "📋 复制";
-      copyBtn.style.cssText = "width:100%;margin-bottom:8px";
+      copyBtn.style.cssText = "width:100%;margin-bottom:6px";
       copyBtn.addEventListener("click", async () => {
         const ok = await copyText(content); copyBtn.textContent = ok ? "✅ 已复制" : "复制失败"; if (ok) setTimeout(() => { copyBtn.textContent = "📋 复制"; }, 1500);
       });
       body.appendChild(copyBtn);
+      // 历史周报按钮
+      const histBtn = document.createElement("button");
+      histBtn.className = "btn blue"; histBtn.textContent = "🗓 历史周报";
+      histBtn.style.cssText = "width:100%;margin-bottom:8px";
+      histBtn.addEventListener("click", renderReportHistory);
+      body.appendChild(histBtn);
       const pre = document.createElement("div");
       pre.style.cssText = "font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:10px;border-radius:4px;line-height:1.6";
       pre.textContent = content;
       body.appendChild(pre);
       UI.addPM("【项目周报】\n" + content.slice(0, 300));
     } catch (e) { body.innerHTML += '<div class="notif-empty">周报生成失败：' + esc(e.message||"") + "</div>"; }
+    const back = document.createElement("button");
+    back.className = "btn gray"; back.textContent = "← 返回看板";
+    back.style.cssText = "margin-top:12px;width:100%";
+    back.addEventListener("click", renderKanban);
+    body.appendChild(back);
+  }
+
+  // ---------- 历史周报 ----------
+  async function renderReportHistory() {
+    if (!window.Bridge || !Bridge.isConfigured()) { addPM("请先连接。"); return; }
+    const body = $("panel-tasks").querySelector(".panel-body");
+    body.innerHTML = "";
+    body.appendChild(sec("🗓 历史周报"));
+    body.innerHTML += '<div style="color:#8a6f52;font-size:12px">加载中…</div>';
+    try {
+      const d = await Bridge.listReports();
+      const reports = d.reports || [];
+      body.innerHTML = "";
+      body.appendChild(sec("🗓 历史周报（" + reports.length + "）"));
+      if (!reports.length) { body.innerHTML += '<div class="notif-empty">暂无历史周报，先生成一份吧</div>'; }
+      for (const r of reports) {
+        const st = r.stats || {};
+        const card = document.createElement("div");
+        card.className = "task-card";
+        card.style.cssText = "background:#4a3520;border:1px solid #1a120a;border-radius:4px;padding:8px;margin-bottom:8px;cursor:pointer";
+        card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">${esc(r.day)}</b><span style="font-size:10px;color:#b0a080">${st.done||0}/${st.total||0} 完成</span></div>`;
+        card.addEventListener("click", async () => {
+          try {
+            const rd = await Bridge.getReport(r.day);
+            const rep = rd.report || {};
+            body.innerHTML = "";
+            body.appendChild(sec("🗓 周报 · " + r.day));
+            const pre = document.createElement("div");
+            pre.style.cssText = "font-size:12px;white-space:pre-wrap;color:#333;background:#f4f1ea;padding:10px;border-radius:4px;line-height:1.6";
+            pre.textContent = rep.content || "(无内容)";
+            body.appendChild(pre);
+            const back2 = document.createElement("button");
+            back2.className = "btn gray"; back2.textContent = "← 返回历史列表";
+            back2.style.cssText = "margin-top:12px;width:100%";
+            back2.addEventListener("click", renderReportHistory);
+            body.appendChild(back2);
+          } catch (e) { addPM("读取失败：" + (e.message||"")); }
+        });
+        body.appendChild(card);
+      }
+    } catch (e) { body.innerHTML += '<div class="notif-empty">读取失败：' + esc(e.message||"") + "</div>"; }
     const back = document.createElement("button");
     back.className = "btn gray"; back.textContent = "← 返回看板";
     back.style.cssText = "margin-top:12px;width:100%";
